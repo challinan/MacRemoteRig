@@ -1,0 +1,8 @@
+.gitignore
+.qmake.stash
+Makefile
+MyQtWidgetExample.pro.user
+MyQtWidgetExample.app
+*.o
+moc_*
+ui_mainwindow.h 

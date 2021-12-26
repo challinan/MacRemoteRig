@@ -1,0 +1,51 @@
+QT       += core gui serialport
+
+greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
+
+CONFIG += c++14
+
+# The following define makes your compiler emit warnings if you use
+# any Qt feature that has been marked deprecated (the exact warnings
+# depend on your compiler). Please consult the documentation of the
+# deprecated API in order to know how to port your code away from it.
+DEFINES += QT_DEPRECATED_WARNINGS
+
+# You can also make your code fail to compile if it uses deprecated APIs.
+# In order to do so, uncomment the following line.
+# You can also select to disable deprecated APIs only up to a certain version of Qt.
+#DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+SOURCES += \
+    frequencypoller.cpp \
+    hamlibconnector.cpp \
+    main.cpp \
+    mainwindow.cpp \
+    set_conf.c
+
+HEADERS += \
+    frequencypoller.h \
+    hamlibconnector.h \
+    mainwindow.h \
+    set_conf.h
+
+FORMS += \
+    mainwindow.ui
+
+# Default rules for deployment.
+qnx: target.path = /tmp/$${TARGET}/bin
+else: unix:!android: target.path = /opt/$${TARGET}/bin
+!isEmpty(target.path): INSTALLS += target
+
+# QMAKE_MACOSX_DEPLOYMENT_TARGET = "11.0"
+QMAKE_MACOSX_DEPLOYMENT_TARGET = "10.15"
+
+message($$PWD)
+# Support for Hamlib library
+# macx: LIBS += -L$$PWD/../../../../usr/local/lib/ -lhamlib.2
+# INCLUDEPATH += $$PWD/../../../../usr/local/include
+# DEPENDPATH += $$PWD/../../../../usr/local/include
+
+# Support for Hamlib Library in our workspace
+macx: LIBS += -L$$PWD/../../sandbox/Hamlib/install-dir-temp/lib/ -lhamlib.4
+INCLUDEPATH += $$PWD/../../sandbox/Hamlib/install-dir-temp/include
+DEPENDPATH += $$PWD/../../sandbox/Hamlib/install-dir-temp/include
