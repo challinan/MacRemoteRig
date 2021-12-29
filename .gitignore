@@ -6,3 +6,4 @@ MyQtWidgetExample.app
 *.o
 moc_*
 ui_mainwindow.h 
+MacRemoteRig.pro.user
