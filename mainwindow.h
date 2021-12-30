@@ -5,6 +5,7 @@
 #include <QDebug>
 #include "hamlibconnector.h"
 #include "frequencypoller.h"
+#include "config_object.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -35,12 +36,15 @@ public slots:
     void on_rev_vfo_pbutton_clicked();
     void on_split_pbutton_clicked();
     void on_spot_pbutton_clicked();
-    void on_xfil_button_clicked();
+    void on_xfil_pbutton_clicked();
+    void on_config_pbutton_clicked();
 
 private:
     Ui::MainWindow *ui;
     HamlibConnector *hamlib_p;
     FrequencyPoller *freq_poller;
     int freq_polling_active;
+    ConfigObject *configobj_p;
+
 };
 #endif // MAINWINDOW_H

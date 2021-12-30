@@ -7,10 +7,6 @@
 #include <iomanip>
 #include "ui_mainwindow.h"
 
-extern "C" {
-#include "set_conf.h"
-}
-
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
@@ -27,11 +23,9 @@ public:
 private:
     RIG *my_rig;        /* handle to rig (instance) */
 //    const char *rig_file = "localhost"; /* Change this for real network useage */
-        const char *rig_file = "macbook-pro";
+        const char *rig_file = "imac-wifi";
     rig_model_t my_model;
     int retcode;
-//     char conf_parms[MAXCONFLEN] = "rig_file=localhost";
-    char conf_parms[MAXCONFLEN] = "rig_file=macbook-pro";
     int verbose = 0;
     vfo_t vfo_a;
     freq_t freq_a;
@@ -50,8 +44,6 @@ public:
             return instance;
     }
 #endif
-
-signals:
 
 public slots:
     void autoupdate_frequency();

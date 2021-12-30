@@ -19,16 +19,20 @@ SOURCES += \
     frequencypoller.cpp \
     hamlibconnector.cpp \
     main.cpp \
-    mainwindow.cpp \
-    set_conf.c
+    config_object.cpp \
+    configdialog.cpp \
+    mainwindow.cpp
 
 HEADERS += \
     frequencypoller.h \
     hamlibconnector.h \
-    mainwindow.h \
-    set_conf.h
+    config_object.h \
+    configdialog.h \
+    configdialog.ui \
+    mainwindow.h
 
 FORMS += \
+    configdialog.ui \
     mainwindow.ui
 
 # Default rules for deployment.

@@ -1,25 +1,25 @@
 #include "hamlibconnector.h"
 #include "ui_mainwindow.h"
+#include "config_object.h"
 #include <QDebug>
 #include <QApplication>
 
 HamlibConnector::HamlibConnector(QObject *parent)
     : QObject{parent}
 {
-    verbose = 1;
+    verbose = 0;
     my_model = 1035;
+    rig_set_debug(RIG_DEBUG_NONE);
     my_rig = rig_init(RIG_MAKE_MODEL(RIG_YAESU, 35));
     if (!my_rig) {
         qDebug() << "Unknown rig num " << my_model << "or initialization error\n";
         QApplication::exit();
     }
+    qDebug() << "Rig init called, my_rig = " << my_rig;
 
-    retcode = set_conf(my_rig, conf_parms);
-    if (retcode != RIG_OK) {
-        qDebug() << "Config parameter error" << rigerror(retcode) << "\n";
-        QApplication::exit();
-    }
     strncpy(my_rig->state.rigport.pathname, rig_file, 511);
+    qDebug() << "rig_file = " << my_rig->state.rigport.pathname;
+
 
     retcode = rig_open(my_rig);
     if (retcode != RIG_OK) {
@@ -50,11 +50,9 @@ QString &HamlibConnector::getFrequency(void) {
 }
 
 void HamlibConnector::autoupdate_frequency() {
-    ui_pointer->FreqDisplay->display(getFrequency());
+    ui_pointer->freqDisplay->display(getFrequency());
 }
 
 void HamlibConnector::store_ui_pointer(Ui::MainWindow *p) {
     ui_pointer = p;
 }
-
-
