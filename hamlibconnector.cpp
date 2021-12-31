@@ -26,33 +26,27 @@ HamlibConnector::HamlibConnector(QObject *parent)
         qDebug() << "rig_open: error = " << rigerror(retcode) << rig_file << strerror(errno) << "\n";
         QApplication::exit();
     }
-    strength = -54;
+
+    retcode = rig_get_vfo(my_rig, &current_vfo_a);
+    strength = -54;     // Initialize S-Meter to effectively zero
 }
 
-freq_t &HamlibConnector::getFrequency(void) {
-    retcode = rig_get_vfo(my_rig, &vfo_a);
-    if (retcode != RIG_OK) {
-        qDebug() << "rig_get_vfo: error = " << rigerror(retcode) << rig_file << strerror(errno) << "\n";
-        QApplication::exit();
-    }
-    qDebug() << "Current VFO is " << vfo_a;
+freq_t &HamlibConnector::mrr_getFrequency(vfo_t vfo) {
 
-    rig_get_freq(my_rig, vfo_a, &freq_a);
+    retcode = rig_get_freq(my_rig, vfo, &current_freq_a);
     if (retcode != RIG_OK) {
         qDebug() << "rig_get_freq: error = " << rigerror(retcode) << rig_file << strerror(errno) << "\n";
         QApplication::exit();
     }
 
-    qDebug() << "Current freq (VFO_A) is " << freq_a;
-    // frequency = freq_a / 1.00e6;
-
-    // qDebug() << "HamlibConnector::getFrequency(): frequency = " << frequency;
-    // return frequency;
-    return freq_a;
+    qDebug() << "Current freq (on currently selected VFO) is " << current_freq_a;
+    return current_freq_a;
 }
 
 void HamlibConnector::autoupdate_frequency() {
-    ui_pointer->freqDisplay->display(getFrequency());
+    freq_t f = mrr_getFrequency(current_vfo_a);
+    QString str_tmp = HamlibConnector::get_display_frequency(f);
+    ui_pointer->freqDisplay->display(str_tmp);
 }
 
 void HamlibConnector::store_ui_pointer(Ui::MainWindow *p) {
@@ -60,7 +54,7 @@ void HamlibConnector::store_ui_pointer(Ui::MainWindow *p) {
 }
 
 void HamlibConnector::autoupdate_smeter() {
-    qDebug("HamlibConnector::autoupdate_smeter() called");
+    // qDebug("HamlibConnector::autoupdate_smeter() called");
     int s = read_rig_strength();
     int t = get_SMeter_progbar_value(s);
     ui_pointer->smeterProgressBar->setValue(t);
@@ -79,15 +73,39 @@ int HamlibConnector::get_SMeter_progbar_value(int x) {
 
 int HamlibConnector::read_rig_strength() {
     value_t s;
-    rig_get_level(my_rig, vfo_a, RIG_LEVEL_STRENGTH, &s);
+    rig_get_level(my_rig, current_vfo_a, RIG_LEVEL_STRENGTH, &s);
     return (s.i);
 }
 
 QString HamlibConnector::get_display_frequency(freq_t f) {
-    // Hamlib hands us a double value equal to the frequency.  We want to display in MHz
-    freq_t f_MHz = f / 1000;
+    // Hamlib hands us a double value equal to the frequency in Hz.  We want to display in MHz
+    // qDebug() << "HamlibConnector::get_display_frequency() entered: (freq_t f) = " << f;
+    freq_t f_MHz = f / 1000000;
+    // qDebug() << "HamlibConnector::get_display_frequency() entered: f_MHZ = " << f_MHz;
     QString ftmp = QString("%1").arg(f_MHz, 0, 'f', 5);
     qsizetype dot_index = ftmp.indexOf(QChar('.'));
-    QString fd = ftmp.left(dot_index+3);    // Print the decimal point + 2 digits after
+    if ( dot_index == -1 ) {
+        qDebug() << "HamlibConnector::get_display_frequency(): No decimal point found in frequency string" << ftmp;
+        QApplication::quit();
+    }
+
+    // qDebug() << "String ftmp now: " << ftmp << "Dot Index = " << dot_index;
+    QString fd = ftmp.left(dot_index+6);    // Print the decimal point + 5 digits after (dot_index is zero based, left() arg is 1 based.
     return fd;
+}
+
+int HamlibConnector::set_rig_freq(freq_t f) {
+    return rig_set_freq(my_rig, current_vfo_a, f);
+}
+
+vfo_t HamlibConnector::mrr_getVFO() {
+    return current_vfo_a;
+}
+
+freq_t HamlibConnector::mrr_getCurrentFreq_A() {
+    return current_freq_a;
+}
+
+void HamlibConnector::mrr_setCurrentFreq_A(freq_t f) {
+    current_freq_a = f;
 }

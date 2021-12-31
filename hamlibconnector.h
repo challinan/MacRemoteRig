@@ -20,6 +20,18 @@ class HamlibConnector : public QObject
 public:
     explicit HamlibConnector(QObject *parent = nullptr);
 
+public:
+    // QString &getFrequency();
+    freq_t &mrr_getFrequency(vfo_t vfo);
+    void store_ui_pointer(Ui::MainWindow *p);
+    int get_SMeter_progbar_value(int x);
+    int read_rig_strength();
+    static QString get_display_frequency(freq_t f);
+    int set_rig_freq(freq_t f);
+    vfo_t mrr_getVFO(void);
+    freq_t mrr_getCurrentFreq_A();
+    void mrr_setCurrentFreq_A(freq_t f);
+
 private:
     RIG *my_rig;        /* handle to rig (instance) */
 //    const char *rig_file = "localhost"; /* Change this for real network useage */
@@ -27,8 +39,8 @@ private:
     rig_model_t my_model;
     int retcode;
     int verbose = 0;
-    vfo_t vfo_a;
-    freq_t freq_a;  // This is a type:double
+    vfo_t current_vfo_a;
+    freq_t current_freq_a;  // This is a type:double
     // QString frequency;
     float frequency;
     Ui::MainWindow *ui_pointer;
@@ -36,14 +48,6 @@ private:
     const QList<int> sMeter_cal = {-54, -48, -42, -30, -24, -18, -12, -6, 0, 10, 20, 30, 40, 50, 60};
 
 private:
-
-public:
-    // QString &getFrequency();
-    freq_t &getFrequency();
-    void store_ui_pointer(Ui::MainWindow *p);
-    int get_SMeter_progbar_value(int x);
-    int read_rig_strength();
-    static QString get_display_frequency(freq_t f);
 
 #if 0
     static HamlibConnector& getInstance() {

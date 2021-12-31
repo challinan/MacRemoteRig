@@ -1,4 +1,5 @@
-QT       += core gui serialport
+# Adding statemachine For debug only
+QT       += core gui serialport statemachine
 
 greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
 
@@ -16,6 +17,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    frequencynudger.cpp \
     frequencypoller.cpp \
     hamlibconnector.cpp \
     main.cpp \
@@ -24,11 +26,11 @@ SOURCES += \
     mainwindow.cpp
 
 HEADERS += \
+    frequencynudger.h \
     frequencypoller.h \
     hamlibconnector.h \
     config_object.h \
     configdialog.h \
-    configdialog.ui \
     mainwindow.h
 
 FORMS += \
@@ -43,7 +45,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 # QMAKE_MACOSX_DEPLOYMENT_TARGET = "11.0"
 QMAKE_MACOSX_DEPLOYMENT_TARGET = "10.15"
 
-message($$PWD)
+# message($$PWD)
 # Support for Hamlib library
 # macx: LIBS += -L$$PWD/../../../../usr/local/lib/ -lhamlib.2
 # INCLUDEPATH += $$PWD/../../../../usr/local/include
