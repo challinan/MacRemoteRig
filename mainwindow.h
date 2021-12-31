@@ -6,6 +6,8 @@
 #include "hamlibconnector.h"
 #include "frequencypoller.h"
 #include "config_object.h"
+// For debug only
+#include <QLineEdit>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -38,6 +40,8 @@ public slots:
     void on_spot_pbutton_clicked();
     void on_xfil_pbutton_clicked();
     void on_config_pbutton_clicked();
+    // For Debug:
+    void on_editingFinished();
 
 private:
     Ui::MainWindow *ui;
@@ -45,6 +49,9 @@ private:
     FrequencyPoller *freq_poller;
     int freq_polling_active;
     ConfigObject *configobj_p;
+    // For debug only:
+    QLineEdit *f_edit;
+    QLCDNumber *lcd_p;
 
 };
 #endif // MAINWINDOW_H

@@ -18,6 +18,7 @@ public slots:
 
 signals:
     void freq_ready();
+    void smeter_ready();
 
 private:
     QTimer *poll_timer;
