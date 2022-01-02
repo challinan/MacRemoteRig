@@ -6,6 +6,7 @@
 #include "hamlibconnector.h"
 #include "frequencypoller.h"
 #include "config_object.h"
+#include "genericdialog.h"
 // For debug only
 #include <QLineEdit>
 
@@ -61,6 +62,8 @@ private slots:
     void nudge_uptimer_fired();
     void nudge_downtimer_fired();
     void on_fast_pButton_toggled(bool checked);
+private slots:
+    void on_manual_pButton_clicked();
 
 private:
     void nudgeFrequency(int direction);
@@ -72,6 +75,7 @@ private:
     FrequencyPoller *freq_poller;
     int freq_polling_active;
     ConfigObject *configobj_p;
+    GenericDialog *genericdialog_p;
     // For debug only:
     QLineEdit *f_edit;
     QLCDNumber *lcd_p;

@@ -1,11 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "hamlibconnector.h"
-// for debug only
-#include <QFormLayout>
-#include <QPropertyAnimation>
-// #include <QStateMachine>
-// #include <QSignalTransition>
+#include "genericdialog.h"
 
 // #define SKIP_RIG_INIT
 
@@ -14,9 +10,6 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
-
-    // Initialized our config object
-    // my_config_p = new ConfigObject;
 
     /* Initialize the rig */
     // HamlibConnector hamlibc;
@@ -53,6 +46,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    delete hamlib_p;
     delete ui;
 }
 
@@ -279,3 +273,9 @@ void MainWindow::on_fast_pButton_toggled(bool checked)
     // qDebug() << "MainWindow::on_fast_pButton_toggled(): entered with " << checked;
     mrr_frequency_increment = checked ? FAST_FREQ_INCREMENT : INITIAL_FREQ_INCREMENT;
 }
+
+void MainWindow::on_manual_pButton_clicked()
+{
+    genericdialog_p = new GenericDialog(this);
+}
+

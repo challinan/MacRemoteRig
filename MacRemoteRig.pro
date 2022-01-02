@@ -19,6 +19,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 SOURCES += \
     frequencynudger.cpp \
     frequencypoller.cpp \
+    genericdialog.cpp \
     hamlibconnector.cpp \
     main.cpp \
     config_object.cpp \
@@ -28,6 +29,7 @@ SOURCES += \
 HEADERS += \
     frequencynudger.h \
     frequencypoller.h \
+    genericdialog.h \
     hamlibconnector.h \
     config_object.h \
     configdialog.h \
