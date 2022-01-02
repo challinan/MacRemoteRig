@@ -1,0 +1,46 @@
+########################## THIS WORKS  #################################
+# On the receiving end (chris-mbp16)
+# gst-launch-1.0 -v udpsrc port=5000 ! "application/x-rtp,media=(string)audio, clock-rate=(int)44100, width=16, height=16, encoding-name=(string)L16, encoding-params=(string)1, channels=(int)1, channel-positions=(int)1, payload=(int)96" ! rtpL16depay ! audioconvert ! osxaudiosink sync=false
+
+# THIS PIPELINE CREATES A FILE FROM THE K3 Audio!!
+# gst-launch-1.0 -vvvv osxaudiosrc device=66 ! audioresample ! audioconvert ! audio/x-raw,format=S24LE,rate=48000 ! wavenc ! filesink location=k3_audio.wav
+
+# AND THIS PIPELINE PLAYS K3 AUDIO ON REMOTE MAC!!!
+# gst-launch-1.0 osxaudiosrc device=66 ! audioresample ! audioconvert ! rtpL16pay  ! udpsink host=chris-mbp16 port=5000
+########################## THIS WORKS  #################################
+
+
+
+# This from https://stackoverflow.com/questions/2715257/moving-audio-over-a-local-network-using-gstreamer: using RTP to send sound
+
+# gst-launch-1.0 -v udpsrc port=5000 ! "application/x-rtp,media=(string)audio, clock-rate=(int)44100, width=16, height=16, encoding-name=(string)L16, encoding-params=(string)1, channels=(int)1, channel-positions=(int)1, payload=(int)96" ! rtpL16depay ! audioconvert ! osxaudiosink sync=false
+
+# gst-launch-1.0 audiotestsrc ! audioconvert ! audio/x-raw,channels=1,depth=16,width=16,rate=44100 ! rtpL16pay  ! udpsink host=chris-mbp16 port=5000
+
+# Test imac-wifi for USB Audio Codec direct to file:
+# gst-launch-1.0 -vvvv osxaudiosrc device=66 ! wavenc ! filesink  location=k3_audio.wav
+
+# More helpful examples from github:
+https://gist.github.com/hum4n0id/cda96fb07a34300cdb2c0e314c14df0a
+
+# More examples for RTP/H.264
+gst-launch-1.0 -v udpsrc port=5004 caps="application/x-rtp,media=(string)video,encoding-name=(string)H264,payload=(int)96" ! rtpjitterbuffer ! rtph264depay ! decodebin ! videoconvert ! autovideosink
+
+# From gst-device-monitor-1.0 Audio/Source on imac-wifi
+
+Device found:
+
+	name  : USB Audio CODEC 
+	class : Audio/Source
+	caps  : audio/x-raw, format=F32LE, layout=interleaved, rate=48000, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=48000, channels=2, channel-mask=0x0000000000000003
+	        audio/x-raw, format={ (string)F64LE, (string)F64BE, (string)F32LE, (string)F32BE, (string)S32LE, (string)S32BE, (string)U32LE, (string)U32BE, (string)S24_32LE, (string)S24_32BE, (string)U24_32LE, (string)U24_32BE, (string)S24LE, (string)S24BE, (string)U24LE, (string)U24BE, (string)S20LE, (string)S20BE, (string)U20LE, (string)U20BE, (string)S18LE, (string)S18BE, (string)U18LE, (string)U18BE, (string)S16LE, (string)S16BE, (string)U16LE, (string)U16BE, (string)S8, (string)U8 }, layout=interleaved, rate=48000, channels=1
+	gst-launch-1.0 osxaudiosrc device=66 ! ...
+
+
+# THIS PIPELINE CREATES A FILE FROM THE K3 Audio!!
+# gst-launch-1.0 -vvvv osxaudiosrc device=66 ! audioresample ! audioconvert ! audio/x-raw,format=S24LE,rate=48000 ! wavenc ! filesink location=k3_audio.wav
+
+# AND THIS PIPELINE PLAYS K3 AUDIO ON REMOTE MAC!!!
+# gst-launch-1.0 osxaudiosrc device=66 ! audioresample ! audioconvert ! rtpL16pay  ! udpsink host=chris-mbp16 port=5000
+ 

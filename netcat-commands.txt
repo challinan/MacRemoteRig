@@ -1,0 +1,17 @@
+# In listening terminal:
+# First open terminal on device
+stty -f /dev/cu.usbserial-1430 9600 raw -echo -echoe -echok
+nc -6 -l 4532 </dev/cu.usbserial-1430 >/dev/cu.usbserial-1420
+
+# To keep it running:
+while true; do echo "Starting nc $i"; nc -6 -l 4532 </dev/cu.usbserial-1430 >/dev/cu.usbserial-1430; sleep 5; i=$((i+1)); done
+
+# In rigctl terminal
+rigctl -m 1035 -r localhost
+
+# From Stack Exchange
+exec 3<>/dev/cu.usbserial-1430           # open a file descriptor
+echo $?				   # Verify success = 0
+stty -f /dev/cu.usbserial-1430 raw 19200 # configure the serial port
+nc -6 -l 4532 ...                  # do stuff...
+exec 3<&-                          # close the file descriptor
