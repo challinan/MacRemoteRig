@@ -24,8 +24,6 @@ public:
     void debug_display_map();
     void write_map_to_disk();
     QString get_value_from_key(QString &s);
-
-private:
     void get_value_from_key();
 
 private:

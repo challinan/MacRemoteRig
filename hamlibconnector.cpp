@@ -7,10 +7,18 @@
 HamlibConnector::HamlibConnector(QObject *parent)
     : QObject{parent}
 {
-    verbose = 0;
-    my_model = 1035;
-    rig_set_debug(RIG_DEBUG_NONE);
-    my_rig = rig_init(RIG_MAKE_MODEL(RIG_YAESU, 35));
+    verbose = RIG_DEBUG_NONE;
+
+#if 0
+    // Figure out how we're configured - ie what rig and device
+    QString rig_model_str = get_value_from_key("Rig Model");
+    qDebug() << "HamlibConnector::HamlibConnector(): Rig Model configured as" << rig_model_str;
+#endif
+
+    my_model = 2029;
+    rig_set_debug(verbose);
+    // my_rig = rig_init(RIG_MAKE_MODEL(RIG_YAESU, 35));
+    my_rig = rig_init(RIG_MODEL_K3);
     if (!my_rig) {
         qDebug() << "Unknown rig num " << my_model << "or initialization error\n";
         QApplication::exit();

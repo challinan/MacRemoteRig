@@ -38,7 +38,7 @@ private:
         const char *rig_file = "imac-wifi";
     rig_model_t my_model;
     int retcode;
-    int verbose = 0;
+    rig_debug_level_e verbose = RIG_DEBUG_NONE;
     vfo_t current_vfo_a;
     freq_t current_freq_a;  // This is a type:double
     // QString frequency;

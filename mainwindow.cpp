@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "hamlibconnector.h"
 #include "genericdialog.h"
+#include "gstreamerlistener.h"
 
 // #define SKIP_RIG_INIT
 
@@ -39,6 +40,11 @@ MainWindow::MainWindow(QWidget *parent)
     mrr_frequency_increment = INITIAL_FREQ_INCREMENT;       // Amount used by nudge to tune up or down the band
     up_pressed = down_pressed = 0;
     nudge_delay = INITIAL_NUDGE_DELAY;          // 500 mS initially
+
+    // Initialize the radio label
+    QFont myFont( "Arial", 18, QFont::Bold);
+    ui->radioLabel->setFont(myFont);
+    ui->radioLabel->setText("Elecraft K3");
 
     // Customize the "Fast" button to make it "Checkable"
     ui->fast_pButton->setCheckable(1);
@@ -85,6 +91,7 @@ void MainWindow::on_a_2_b_pbutton_clicked()
     pd->exec();
 #endif
 
+#if 0       // Standalone debug test dialog
     // More debug code
     QDialog *pd = new QDialog();
     pd->setMinimumSize(QSize(800, 800));
@@ -94,6 +101,8 @@ void MainWindow::on_a_2_b_pbutton_clicked()
 
     pd->show();
     pd->exec();
+#endif
+    GstreamerListener();
 }
 
 // For debug only

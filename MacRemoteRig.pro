@@ -20,6 +20,7 @@ SOURCES += \
     frequencynudger.cpp \
     frequencypoller.cpp \
     genericdialog.cpp \
+    gstreamerlistener.cpp \
     hamlibconnector.cpp \
     main.cpp \
     config_object.cpp \
@@ -30,6 +31,7 @@ HEADERS += \
     frequencynudger.h \
     frequencypoller.h \
     genericdialog.h \
+    gstreamerlistener.h \
     hamlibconnector.h \
     config_object.h \
     configdialog.h \
@@ -57,3 +59,7 @@ QMAKE_MACOSX_DEPLOYMENT_TARGET = "10.15"
 macx: LIBS += -L$$PWD/../../sandbox/Hamlib/install-dir-temp/lib/ -lhamlib.4
 INCLUDEPATH += $$PWD/../../sandbox/Hamlib/install-dir-temp/include
 DEPENDPATH += $$PWD/../../sandbox/Hamlib/install-dir-temp/include
+
+# GStreamer support
+macx: LIBS += -L/Library/Frameworks/GStreamer.framework/Libraries -lgstreamer-1.0.0 -lglib-2.0.0
+INCLUDEPATH += /Library/Frameworks/GStreamer.framework/Headers
