@@ -4,13 +4,17 @@
 #include "genericdialog.h"
 #include "gstreamerlistener.h"
 
-// #define SKIP_RIG_INIT
+#define SKIP_RIG_INIT
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    // Initialize our config database
+    configobj_p = new ConfigObject;
+    configobj_p->debug_display_map();
 
     /* Initialize the rig */
     // HamlibConnector hamlibc;
@@ -195,7 +199,7 @@ void MainWindow::on_xfil_pbutton_clicked()
 }
 
 void MainWindow::on_config_pbutton_clicked() {
-    configobj_p = new ConfigObject;
+    configobj_p->open_config_dialog();
 }
 
 void MainWindow::on_uptune_pButton_clicked()

@@ -24,7 +24,6 @@ SOURCES += \
     hamlibconnector.cpp \
     main.cpp \
     config_object.cpp \
-    configdialog.cpp \
     mainwindow.cpp
 
 HEADERS += \
@@ -34,7 +33,6 @@ HEADERS += \
     gstreamerlistener.h \
     hamlibconnector.h \
     config_object.h \
-    configdialog.h \
     mainwindow.h
 
 FORMS += \
