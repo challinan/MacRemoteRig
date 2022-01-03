@@ -1,19 +1,17 @@
 #include "gstreamerlistener.h"
 #include <QDebug>
 
-GstreamerListener::GstreamerListener(QObject *parent)
-    : QObject{parent}
+GstreamerListener::GstreamerListener()
 {
+
+}
+
+void GstreamerListener::run() {
+
     /* Initialize GStreamer */
     gst_init (&argc, &argv);  // Ugh - this is 'C' afterall
 
     /* Build the pipeline */
-#if 0
-    pipeline =
-        gst_parse_launch
-        ("playbin uri=https://www.freedesktop.org/software/gstreamer-sdk/data/media/sintel_trailer-480p.webm",
-        NULL);
-#endif
     // pipeline = gst_parse_launch("udpsrc port=5000 ! \"application/x-rtp,media=(string)audio, "
     //                            "clock-rate=(int)48000, width=16, height=16, encoding-name=(string)L16, "
     //                            "encoding-params=(string)1, channels=(int)1, channel-positions=(int)1, payload=(int)96\" "
@@ -22,7 +20,7 @@ GstreamerListener::GstreamerListener(QObject *parent)
     pipeline = gst_parse_launch("udpsrc port=5000 ! application/x-rtp,media=(string)audio, "
                                 "clock-rate=(int)48000, width=16, height=16, encoding-name=(string)L16, "
                                 "encoding-params=(string)1, channels=(int)1, channel-positions=(int)1, payload=(int)96 "
-                                "! rtpL16depay ! audioconvert ! osxaudiosink sync=false", gst_error);
+                                "! rtpL16depay ! audioconvert ! osxaudiosink sync=false", &gst_error);
 
     qDebug() << "gst_parse_launcher() returned" << gst_error;
 

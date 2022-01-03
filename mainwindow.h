@@ -7,6 +7,7 @@
 #include "frequencypoller.h"
 #include "config_object.h"
 #include "genericdialog.h"
+#include "gstreamerlistener.h"
 // For debug only
 #include <QLineEdit>
 
@@ -84,6 +85,7 @@ private:
     bool up_pressed;
     bool down_pressed;
     int nudge_delay;
+    GstreamerListener *gstreamerListener_p;
 
 };
 #endif // MAINWINDOW_H

@@ -3,16 +3,17 @@
 
 #include <gst/gst.h>
 #include <QObject>
+#include <QThread>
 
-class GstreamerListener : public QObject
+class GstreamerListener : public QThread
 {
-    Q_OBJECT
 public:
-    explicit GstreamerListener(QObject *parent = nullptr);
+    explicit GstreamerListener();
+    virtual void run();
 
 private:
     GstElement *pipeline;
-    GError ** gst_error;
+    GError *gst_error = NULL;
     GstBus *bus;
     GstMessage *msg;
     int argc = 0;

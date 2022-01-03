@@ -48,6 +48,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Customize the "Fast" button to make it "Checkable"
     ui->fast_pButton->setCheckable(1);
+
+    // Start the listener thread for audio
+    gstreamerListener_p = new GstreamerListener();
+    gstreamerListener_p->start();  // start() unlike run() detaches and returns immediately
 }
 
 MainWindow::~MainWindow()
@@ -102,7 +106,7 @@ void MainWindow::on_a_2_b_pbutton_clicked()
     pd->show();
     pd->exec();
 #endif
-    GstreamerListener();
+
 }
 
 // For debug only
@@ -120,6 +124,8 @@ void MainWindow::on_editingFinished() {
 
 void MainWindow::on_quit_pbutton_clicked() {
     qDebug() << "on_quit_pbutton_clicked() called";
+    gstreamerListener_p->terminate();
+    gstreamerListener_p->wait();
     QApplication::quit();
 }
 
