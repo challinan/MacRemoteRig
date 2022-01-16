@@ -8,6 +8,7 @@ HamlibConnector::HamlibConnector(QObject *parent)
     : QObject{parent}
 {
     verbose = RIG_DEBUG_NONE;
+    // verbose = RIG_DEBUG_TRACE;
 
 #if 0
     // Figure out how we're configured - ie what rig and device
@@ -15,10 +16,10 @@ HamlibConnector::HamlibConnector(QObject *parent)
     qDebug() << "HamlibConnector::HamlibConnector(): Rig Model configured as" << rig_model_str;
 #endif
 
-    my_model = 2029;
+    my_model = RIG_MODEL_K3;
     rig_set_debug(verbose);
     // my_rig = rig_init(RIG_MAKE_MODEL(RIG_YAESU, 35));
-    my_rig = rig_init(RIG_MODEL_K3);
+    my_rig = rig_init(my_model);
     if (!my_rig) {
         qDebug() << "Unknown rig num " << my_model << "or initialization error\n";
         QApplication::exit();
@@ -31,8 +32,8 @@ HamlibConnector::HamlibConnector(QObject *parent)
 
     retcode = rig_open(my_rig);
     if (retcode != RIG_OK) {
-        qDebug() << "rig_open: error = " << rigerror(retcode) << rig_file << strerror(errno) << "\n";
-        QApplication::exit();
+        qDebug() << "HamlibConnector::HamlibConnector(): rig_open: error = " << rigerror(retcode) << rig_file << strerror(errno) << "\n";
+        // Can't quit here - main loop isn't yet running.  All we can do is report the failure.
     }
 
     retcode = rig_get_vfo(my_rig, &current_vfo_a);
@@ -116,4 +117,8 @@ freq_t HamlibConnector::mrr_getCurrentFreq_A() {
 
 void HamlibConnector::mrr_setCurrentFreq_A(freq_t f) {
     current_freq_a = f;
+}
+
+int HamlibConnector::get_retcode(void) {
+    return retcode;
 }

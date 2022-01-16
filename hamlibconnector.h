@@ -31,17 +31,17 @@ public:
     vfo_t mrr_getVFO(void);
     freq_t mrr_getCurrentFreq_A();
     void mrr_setCurrentFreq_A(freq_t f);
+    int get_retcode(void);
 
 private:
     RIG *my_rig;        /* handle to rig (instance) */
 //    const char *rig_file = "localhost"; /* Change this for real network useage */
-        const char *rig_file = "imac-wifi";
+    const char *rig_file = "imac-wifi";
     rig_model_t my_model;
     int retcode;
     rig_debug_level_e verbose = RIG_DEBUG_NONE;
     vfo_t current_vfo_a;
     freq_t current_freq_a;  // This is a type:double
-    // QString frequency;
     float frequency;
     Ui::MainWindow *ui_pointer;
     int strength;

@@ -42,6 +42,7 @@ void ConfigObject::process_line(QString s) {
 
 ConfigObject::~ConfigObject() {
     qDebug() << "ConfigObject destructor called";
+    delete pDialog;
 }
 
 void ConfigObject::open_config_dialog() {

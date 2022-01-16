@@ -4,23 +4,28 @@
 #include "genericdialog.h"
 #include "gstreamerlistener.h"
 
-#define SKIP_RIG_INIT
+// #define SKIP_RIG_INIT
+// #define SKIP_CONFIG_INIT
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    this->setWindowTitle("Mac Remote Rig");
 
+#ifdef SKIP_CONFIG_INIT
     // Initialize our config database
     configobj_p = new ConfigObject;
     configobj_p->debug_display_map();
+#endif
 
     /* Initialize the rig */
     // HamlibConnector hamlibc;
 #ifndef SKIP_RIG_INIT
-    hamlib_p = new HamlibConnector;
-    hamlib_p->store_ui_pointer(ui);
+        hamlib_p = new HamlibConnector;
+        hamlib_p->store_ui_pointer(ui);
+        qDebug() << " MainWindow::MainWindow() constructor: hamlib init returned" << hamlib_p->get_retcode();
 
     /* Update our display window with the current VFO freq */
     // QString s = hamlib_p->getFrequency();
@@ -35,6 +40,7 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
 
     // Initialize S-Meter
+    qDebug() << "Initialize S Meter";
     // See comments at http://hamlib.sourceforge.net/manuals/4.3/group__rig.html about rig_get_level
     ui->smeterProgressBar->setMinimum(0);
     ui->smeterProgressBar->setMaximum(15);
@@ -46,6 +52,7 @@ MainWindow::MainWindow(QWidget *parent)
     nudge_delay = INITIAL_NUDGE_DELAY;          // 500 mS initially
 
     // Initialize the radio label
+    qDebug() << "Initialize Radio label";
     QFont myFont( "Arial", 18, QFont::Bold);
     ui->radioLabel->setFont(myFont);
     ui->radioLabel->setText("Elecraft K3");
@@ -55,13 +62,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Start the listener thread for audio
     gstreamerListener_p = new GstreamerListener();
-    gstreamerListener_p->start();  // start() unlike run() detaches and returns immediately
+    gstreamerListener_p->start();  // start() unlike run() detaches and returns immediatelyxb
 }
 
 MainWindow::~MainWindow()
 {
+    // delete gstreamerListener_p;
     delete hamlib_p;
     delete ui;
+
 }
 
 HamlibConnector *MainWindow::getHamlibPointer() {
@@ -128,8 +137,8 @@ void MainWindow::on_editingFinished() {
 
 void MainWindow::on_quit_pbutton_clicked() {
     qDebug() << "on_quit_pbutton_clicked() called";
-    gstreamerListener_p->terminate();
-    gstreamerListener_p->wait();
+    // gstreamerListener_p->terminate();
+    // gstreamerListener_p->wait();
     QApplication::quit();
 }
 
@@ -271,7 +280,7 @@ void MainWindow::nudgeFrequency(int direction) {
     int rc = hl.set_rig_freq(f);
     if ( rc != RIG_OK ) {
         qDebug() << "MainWindow::nudgeFreqency(): set frequency failed: " << rc;
-        QApplication::quit();
+        QApplication::exit(4);
     }
     QString str_tmp = HamlibConnector::get_display_frequency(f);
     ui->freqDisplay->display(str_tmp);

@@ -27,6 +27,7 @@ https://gist.github.com/hum4n0id/cda96fb07a34300cdb2c0e314c14df0a
 gst-launch-1.0 -v udpsrc port=5004 caps="application/x-rtp,media=(string)video,encoding-name=(string)H264,payload=(int)96" ! rtpjitterbuffer ! rtph264depay ! decodebin ! videoconvert ! autovideosink
 
 # From gst-device-monitor-1.0 Audio/Source on imac-wifi
+(located in /Library//Frameworks/GStreamer.framework/Versions/1.0/bin)
 
 Device found:
 
