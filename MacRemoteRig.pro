@@ -24,7 +24,8 @@ SOURCES += \
     hamlibconnector.cpp \
     main.cpp \
     config_object.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    spot_delayworker.cpp
 
 HEADERS += \
     frequencynudger.h \
@@ -33,7 +34,8 @@ HEADERS += \
     gstreamerlistener.h \
     hamlibconnector.h \
     config_object.h \
-    mainwindow.h
+    mainwindow.h \
+    spot_delayworker.h
 
 FORMS += \
     configdialog.ui \

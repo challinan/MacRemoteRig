@@ -18,6 +18,7 @@ private:
     GstMessage *msg;
     int argc = 0;
     char **argv;
+    static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data);
 
 signals:
 

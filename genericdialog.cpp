@@ -51,6 +51,7 @@ void GenericDialog::pb_ok_clicked(QAbstractButton *button) {
         MainWindow *pMain = dynamic_cast<MainWindow *>(p_parent);
         HamlibConnector *hlp = pMain->getHamlibPointer();
         hlp->set_rig_freq(f_new);
+        hlp->autoupdate_frequency();
     }
 
     pd->close();

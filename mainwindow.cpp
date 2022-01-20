@@ -27,16 +27,24 @@ MainWindow::MainWindow(QWidget *parent)
         hamlib_p->store_ui_pointer(ui);
         qDebug() << " MainWindow::MainWindow() constructor: hamlib init returned" << hamlib_p->get_retcode();
 
-    /* Update our display window with the current VFO freq */
-    // QString s = hamlib_p->getFrequency();
-    freq_t f = hamlib_p->mrr_getFrequency(hamlib_p->mrr_getVFO());
-    qDebug() << "MainWindow Constructor: mrr_getFrequency returned: " << f;
-    QString str_tmp = HamlibConnector::get_display_frequency(f);
+    /* Update our Main (VFO_A) display window with the current VFO_A freq */
+    freq_t fA = hamlib_p->mrr_getFrequency(RIG_VFO_A);
+    QString str_tmp = HamlibConnector::get_display_frequency(fA);
 
     /* Initialize the freq window */
     ui->freqDisplay->setDigitCount(8);
     ui->freqDisplay->setSmallDecimalPoint(1);
     ui->freqDisplay->display(str_tmp);
+
+    /* Update our Sub (VFO_B) display window with the current VFO_B freq */
+    freq_t fB = hamlib_p->mrr_getFrequency(RIG_VFO_B);
+    str_tmp.clear();
+    str_tmp = HamlibConnector::get_display_frequency(fB);
+
+    /* Initialize the Secondary freq (VFO_B) window */
+    ui->freqBDisplay->setDigitCount(8);
+    ui->freqBDisplay->setSmallDecimalPoint(1);
+    ui->freqBDisplay->display(str_tmp);
 #endif
 
     // Initialize S-Meter
@@ -60,14 +68,16 @@ MainWindow::MainWindow(QWidget *parent)
     // Customize the "Fast" button to make it "Checkable"
     ui->fast_pButton->setCheckable(1);
 
+    // Initialize other front panel status bits
+    initialize_front_panel();
     // Start the listener thread for audio
     gstreamerListener_p = new GstreamerListener();
-    gstreamerListener_p->start();  // start() unlike run() detaches and returns immediatelyxb
+    gstreamerListener_p->start();  // start() unlike run() detaches and returns immediately
 }
 
 MainWindow::~MainWindow()
 {
-    // delete gstreamerListener_p;
+    delete gstreamerListener_p;
     delete hamlib_p;
     delete ui;
 
@@ -120,6 +130,15 @@ void MainWindow::on_a_2_b_pbutton_clicked()
     pd->exec();
 #endif
 
+    // int rig_get_freqs(RIG *rig, freq_t *freqA, freq_t freqB );
+    QString boxStr = "RIG_VFO_A = ";
+    QString vfo_number = "";
+    vfo_number.setNum(RIG_VFO_A);
+    boxStr.append(vfo_number);
+    QMessageBox msgBox1;
+    msgBox1.setText(boxStr);
+    msgBox1.exec();
+
 }
 
 // For debug only
@@ -137,14 +156,23 @@ void MainWindow::on_editingFinished() {
 
 void MainWindow::on_quit_pbutton_clicked() {
     qDebug() << "on_quit_pbutton_clicked() called";
-    // gstreamerListener_p->terminate();
-    // gstreamerListener_p->wait();
-    QApplication::quit();
+    gstreamerListener_p->terminate();
+    gstreamerListener_p->wait();
+    QApplication::exit(0);
 }
 
 void MainWindow::on_a_b_vfo_pbutton_clicked()
 {
+    hamlib_p->setSwapAB();
 
+    // Update the displays
+    freq_t fA = hamlib_p->mrr_getFrequency(RIG_VFO_A);
+    QString str_tmp = HamlibConnector::get_display_frequency(fA);
+    ui->freqDisplay->display(str_tmp);
+    str_tmp.clear();
+    freq_t fB = hamlib_p->mrr_getFrequency(RIG_VFO_B);
+    str_tmp = HamlibConnector::get_display_frequency(fB);
+    ui->freqBDisplay->display(str_tmp);
 }
 
 void MainWindow::on_afx_pbutton_clicked()
@@ -199,7 +227,7 @@ void MainWindow::on_split_pbutton_clicked()
 
 void MainWindow::on_spot_pbutton_clicked()
 {
-    qDebug() << "on_spot_pbutton_clicked() not implemented";
+    hamlib_p->setSpot();
 }
 
 void MainWindow::on_xfil_pbutton_clicked()
@@ -307,3 +335,71 @@ void MainWindow::on_manual_pButton_clicked()
     genericdialog_p = new GenericDialog(this);
 }
 
+void MainWindow::on_band_pbutton_clicked()
+{
+    qDebug() << "MainWindow::on_band_pbutton_clicked()";
+}
+
+void MainWindow::on_mode_pbutton_clicked()
+{
+    qDebug() << "MainWindow::on_mode_pbutton_clicked()";
+}
+
+void MainWindow::on_power_pbutton_clicked()
+{
+    qDebug() << "MainWindow::on_power_pbutton_clicked()";
+    // int 	rig_set_powerstat (RIG *rig, powerstat_t status)
+}
+
+void MainWindow::on_tune_pbutton_clicked()
+{
+    qDebug() << "MainWindow::on_tune_pbutton_clicked()";
+}
+
+void MainWindow::on_upshift_pButton_clicked()
+{
+    qDebug() << "MainWindow::on_upshift_pButton_clicked()";
+}
+
+
+void MainWindow::on_centerShift_pButton_clicked()
+{
+    qDebug() << "MainWindow::on_centerShift_pButton_clicked()";
+}
+
+
+void MainWindow::on_downshift_pButton_clicked()
+{
+    qDebug() << "MainWindow::on_downshift_pButton_clicked()";
+}
+
+
+void MainWindow::on_upwidth_pButton_clicked()
+{
+    qDebug() << "MainWindow::on_upwidth_pButton_clicked()";
+}
+
+
+void MainWindow::on_centerWidth_pButton_clicked()
+{
+    qDebug() << "MainWindow::on_centerWidth_pButton_clicked()";
+}
+
+
+void MainWindow::on_downwidth_pButton_clicked()
+{
+    qDebug() << "MainWindow::on_downwidth_pButton_clicked()";
+}
+
+void MainWindow::initialize_front_panel() {
+
+    // int rc = rig_get_freqs(my_rig, freq_t *freqA, freq_t freqB )
+    mode_t mode;
+    pbwidth_t width;
+    int rc = hamlib_p->mrr_get_mode(&mode, &width);
+    if ( rc != RIG_OK ) {
+        qDebug() << "MainWindow::initialize_front_panel(): error getting mode" << rc << rigerror(rc);
+    }
+    hamlib_p->mrr_getModeString(mode);
+    qDebug() << "MainWindow::initialize_front_panel() mode returned" << hamlib_p->mrr_getModeString(mode) << "width:" << width;
+}

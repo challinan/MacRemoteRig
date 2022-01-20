@@ -18,8 +18,8 @@ FrequencyPoller::FrequencyPoller(QObject *parent)
 
 // Slot - timer connected to this one
 void FrequencyPoller::poll_rig_frequency() {
-    static int i = 0;
-    qDebug() << "poll_rig_frequency() called " << i++;
+    // static int i = 0;
+    // qDebug() << "poll_rig_frequency() called " << i++;
     emit freq_ready();
     emit smeter_ready();
 }

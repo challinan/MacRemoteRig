@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QDebug>
+#include <QMessageBox>
 #include "hamlibconnector.h"
 #include "frequencypoller.h"
 #include "config_object.h"
@@ -63,12 +64,21 @@ private slots:
     void nudge_uptimer_fired();
     void nudge_downtimer_fired();
     void on_fast_pButton_toggled(bool checked);
-private slots:
     void on_manual_pButton_clicked();
+    void on_band_pbutton_clicked();
+    void on_mode_pbutton_clicked();
+    void on_power_pbutton_clicked();
+    void on_tune_pbutton_clicked();
+    void on_upshift_pButton_clicked();
+    void on_centerShift_pButton_clicked();
+    void on_downshift_pButton_clicked();
+    void on_upwidth_pButton_clicked();
+    void on_centerWidth_pButton_clicked();
+    void on_downwidth_pButton_clicked();
 
 private:
     void nudgeFrequency(int direction);
-
+    void initialize_front_panel();
 
 private:
     Ui::MainWindow *ui;

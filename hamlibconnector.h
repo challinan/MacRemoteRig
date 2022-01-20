@@ -2,10 +2,12 @@
 #define HAMLIBCONNECTOR_H
 
 #include <QObject>
+#include <QThread>
 #include "hamlib/rig.h"
 #include <iostream>
 #include <iomanip>
 #include "ui_mainwindow.h"
+#include "spot_delayworker.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -22,7 +24,7 @@ public:
 
 public:
     // QString &getFrequency();
-    freq_t &mrr_getFrequency(vfo_t vfo);
+    freq_t mrr_getFrequency(vfo_t vfo);
     void store_ui_pointer(Ui::MainWindow *p);
     int get_SMeter_progbar_value(int x);
     int read_rig_strength();
@@ -32,20 +34,31 @@ public:
     freq_t mrr_getCurrentFreq_A();
     void mrr_setCurrentFreq_A(freq_t f);
     int get_retcode(void);
+    int mrr_get_mode(mode_t *mode, pbwidth_t *width);
+    void setSpot();
+    void setSwapAB();
+    const char *mrr_getModeString(mode_t mode);
 
 private:
     RIG *my_rig;        /* handle to rig (instance) */
-//    const char *rig_file = "localhost"; /* Change this for real network useage */
+    //  const char *rig_file = "localhost"; /* Change this for real network useage */
     const char *rig_file = "imac-wifi";
     rig_model_t my_model;
     int retcode;
     rig_debug_level_e verbose = RIG_DEBUG_NONE;
-    vfo_t current_vfo_a;
+    vfo_t current_vfo;
     freq_t current_freq_a;  // This is a type:double
+    freq_t current_freq_b;
     float frequency;
     Ui::MainWindow *ui_pointer;
     int strength;
     const QList<int> sMeter_cal = {-54, -48, -42, -30, -24, -18, -12, -6, 0, 10, 20, 30, 40, 50, 60};
+    bool lockout_spot;
+    SpotDelayWorker *spotDelayWorker_p;
+    rmode_t mode;
+    pbwidth_t width;
+    const char *modeStr_p;
+
 
 private:
 
@@ -59,6 +72,7 @@ private:
 public slots:
     void autoupdate_frequency();
     void autoupdate_smeter();
+    void cleanupSpotDelay();
 
 };
 

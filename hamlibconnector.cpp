@@ -36,11 +36,16 @@ HamlibConnector::HamlibConnector(QObject *parent)
         // Can't quit here - main loop isn't yet running.  All we can do is report the failure.
     }
 
-    retcode = rig_get_vfo(my_rig, &current_vfo_a);
+    retcode = rig_get_vfo(my_rig, &current_vfo);
+    qDebug() << "HamlibConnector::HamlibConnector(): rig_get_vfo returned" << current_vfo;
     strength = -54;     // Initialize S-Meter to effectively zero
+
+    lockout_spot = false;
+    spotDelayWorker_p = nullptr;
+    current_vfo = RIG_VFO_A;
 }
 
-freq_t &HamlibConnector::mrr_getFrequency(vfo_t vfo) {
+freq_t HamlibConnector::mrr_getFrequency(vfo_t vfo) {
 
     retcode = rig_get_freq(my_rig, vfo, &current_freq_a);
     if (retcode != RIG_OK) {
@@ -48,12 +53,12 @@ freq_t &HamlibConnector::mrr_getFrequency(vfo_t vfo) {
         QApplication::exit();
     }
 
-    qDebug() << "Current freq (on currently selected VFO) is " << current_freq_a;
+    // qDebug() << "Current freq (on currently selected VFO) is " << current_freq_a;
     return current_freq_a;
 }
 
 void HamlibConnector::autoupdate_frequency() {
-    freq_t f = mrr_getFrequency(current_vfo_a);
+    freq_t f = mrr_getFrequency(current_vfo);
     QString str_tmp = HamlibConnector::get_display_frequency(f);
     ui_pointer->freqDisplay->display(str_tmp);
 }
@@ -82,7 +87,7 @@ int HamlibConnector::get_SMeter_progbar_value(int x) {
 
 int HamlibConnector::read_rig_strength() {
     value_t s;
-    rig_get_level(my_rig, current_vfo_a, RIG_LEVEL_STRENGTH, &s);
+    rig_get_level(my_rig, current_vfo, RIG_LEVEL_STRENGTH, &s);
     return (s.i);
 }
 
@@ -104,11 +109,11 @@ QString HamlibConnector::get_display_frequency(freq_t f) {
 }
 
 int HamlibConnector::set_rig_freq(freq_t f) {
-    return rig_set_freq(my_rig, current_vfo_a, f);
+    return rig_set_freq(my_rig, current_vfo, f);
 }
 
 vfo_t HamlibConnector::mrr_getVFO() {
-    return current_vfo_a;
+    return current_vfo;
 }
 
 freq_t HamlibConnector::mrr_getCurrentFreq_A() {
@@ -121,4 +126,47 @@ void HamlibConnector::mrr_setCurrentFreq_A(freq_t f) {
 
 int HamlibConnector::get_retcode(void) {
     return retcode;
+}
+
+void HamlibConnector::setSpot(void) {
+    if ( lockout_spot ) { return; }
+
+    int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_SPOT, 1);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::setSpot() failed: rc = " << rigerror(rc);
+    }
+    lockout_spot = true;
+    // Start a thread with a 2 second timer.  Update freq when done.
+    spotDelayWorker_p = new SpotDelayWorker();
+    connect(spotDelayWorker_p, &SpotDelayWorker::spotDelayExpired, this, &HamlibConnector::cleanupSpotDelay);
+    spotDelayWorker_p->start();  // start() unlike run() detaches and returns immediately
+}
+
+void HamlibConnector::cleanupSpotDelay() {
+    qDebug() << "HamlibConnector::cleanupSpotDelay(): killing worker thread, updating freq";
+    delete spotDelayWorker_p;
+    spotDelayWorker_p = nullptr;
+    autoupdate_frequency();
+    lockout_spot = false;
+}
+
+void HamlibConnector::setSwapAB() {
+
+    int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_ABSWAP, 1);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::setSpot() failed: rc = " << rigerror(rc);
+    }
+}
+
+int HamlibConnector::mrr_get_mode(mode_t *m, pbwidth_t *w) {
+
+    int rc = rig_get_mode(my_rig, RIG_VFO_A, &mode, &width);
+    *m = mode; *w = width;
+    qDebug() << "HamlibConnector::mrr_get_mode(): returned" << rc << "mode =" << mode << "width =" << width;
+    return rc;
+}
+
+const char *HamlibConnector::mrr_getModeString(mode_t mode) {
+
+    return rig_strrmode(mode);
 }
