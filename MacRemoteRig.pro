@@ -25,7 +25,9 @@ SOURCES += \
     main.cpp \
     config_object.cpp \
     mainwindow.cpp \
-    spot_delayworker.cpp
+    spot_delayworker.cpp \
+    transmitwindow.cpp \
+    tune_dialog.cpp
 
 HEADERS += \
     frequencynudger.h \
@@ -35,7 +37,9 @@ HEADERS += \
     hamlibconnector.h \
     config_object.h \
     mainwindow.h \
-    spot_delayworker.h
+    spot_delayworker.h \
+    transmitwindow.h \
+    tune_dialog.h
 
 FORMS += \
     configdialog.ui \

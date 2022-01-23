@@ -15,6 +15,7 @@ QT_END_NAMESPACE
 
 #define MAXCONFLEN 1024
 #define TOKEN_FRONTEND(t) ((t)|(1<<30))
+#define BANDWIDTH_STEP 20
 
 class HamlibConnector : public QObject
 {
@@ -23,8 +24,7 @@ public:
     explicit HamlibConnector(QObject *parent = nullptr);
 
 public:
-    // QString &getFrequency();
-    freq_t mrr_getFrequency(vfo_t vfo);
+    freq_t mrr_getRigFrequency(vfo_t vfo);
     void store_ui_pointer(Ui::MainWindow *p);
     int get_SMeter_progbar_value(int x);
     int read_rig_strength();
@@ -34,10 +34,18 @@ public:
     freq_t mrr_getCurrentFreq_A();
     void mrr_setCurrentFreq_A(freq_t f);
     int get_retcode(void);
-    int mrr_get_mode(mode_t *mode, pbwidth_t *width);
+    mode_t mrr_get_mode();
+    int mrr_set_mode(mode_t mode);
+    pbwidth_t mrr_get_width();
     void setSpot();
     void setSwapAB();
     const char *mrr_getModeString(mode_t mode);
+
+public slots:
+    int bwidth_change_request(int up_or_down);
+    void mrrSetTune(int on);
+    float read_rig_swr();
+    void mrrSetRx();
 
 private:
     RIG *my_rig;        /* handle to rig (instance) */
@@ -55,8 +63,8 @@ private:
     const QList<int> sMeter_cal = {-54, -48, -42, -30, -24, -18, -12, -6, 0, 10, 20, 30, 40, 50, 60};
     bool lockout_spot;
     SpotDelayWorker *spotDelayWorker_p;
-    rmode_t mode;
-    pbwidth_t width;
+    rmode_t current_mode;
+    pbwidth_t current_pbwidth;
     const char *modeStr_p;
 
 
@@ -73,6 +81,10 @@ public slots:
     void autoupdate_frequency();
     void autoupdate_smeter();
     void cleanupSpotDelay();
+    int get_rig_mode_and_bw();
+
+signals:
+    void updateWidthSlider(pbwidth_t w);
 
 };
 

@@ -11,7 +11,6 @@ class FrequencyPoller : public QObject
     Q_OBJECT
 public:
     explicit FrequencyPoller(QObject *parent = nullptr);
-//    FrequencyPoller();
 
 public slots:
     void poll_rig_frequency();

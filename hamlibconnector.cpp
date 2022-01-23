@@ -43,22 +43,41 @@ HamlibConnector::HamlibConnector(QObject *parent)
     lockout_spot = false;
     spotDelayWorker_p = nullptr;
     current_vfo = RIG_VFO_A;
+    current_mode = RIG_MODE_NONE;
+    current_pbwidth = 0;
+    modeStr_p = nullptr;
+    current_freq_a = 0e0;
+    current_freq_b = 0e0;
+
+    // Initialize rig mode, etc
+    get_rig_mode_and_bw();
+    mrr_getRigFrequency(RIG_VFO_A);
+    mrr_getRigFrequency(RIG_VFO_B);
 }
 
-freq_t HamlibConnector::mrr_getFrequency(vfo_t vfo) {
+freq_t HamlibConnector::mrr_getRigFrequency(vfo_t vfo) {
 
-    retcode = rig_get_freq(my_rig, vfo, &current_freq_a);
+    freq_t freq;
+    retcode = rig_get_freq(my_rig, vfo, &freq);
     if (retcode != RIG_OK) {
         qDebug() << "rig_get_freq: error = " << rigerror(retcode) << rig_file << strerror(errno) << "\n";
         QApplication::exit();
     }
+    if ( vfo == RIG_VFO_A ) {
+        current_freq_a = freq;
+        return freq;
+    }
+        else {
+        current_freq_b = freq;
+        return freq;
+    }
 
-    // qDebug() << "Current freq (on currently selected VFO) is " << current_freq_a;
-    return current_freq_a;
+    qDebug() << "Current freq (on currently selected VFO) is " << current_freq_a;
+    return -1e0;
 }
 
 void HamlibConnector::autoupdate_frequency() {
-    freq_t f = mrr_getFrequency(current_vfo);
+    freq_t f = mrr_getRigFrequency(current_vfo);
     QString str_tmp = HamlibConnector::get_display_frequency(f);
     ui_pointer->freqDisplay->display(str_tmp);
 }
@@ -89,6 +108,17 @@ int HamlibConnector::read_rig_strength() {
     value_t s;
     rig_get_level(my_rig, current_vfo, RIG_LEVEL_STRENGTH, &s);
     return (s.i);
+}
+
+float HamlibConnector::read_rig_swr() {
+    value_t s;
+    int rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_SWR, &s);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::read_rig_swr(): rig_get_level failed" << rigerror(rc);
+        return -1e0f;
+    }
+    qDebug() << "HamlibConnector::read_rig_swr(): returned" << s.f;
+    return (s.f);
 }
 
 QString HamlibConnector::get_display_frequency(freq_t f) {
@@ -158,15 +188,83 @@ void HamlibConnector::setSwapAB() {
     }
 }
 
-int HamlibConnector::mrr_get_mode(mode_t *m, pbwidth_t *w) {
+mode_t HamlibConnector::mrr_get_mode() {
 
-    int rc = rig_get_mode(my_rig, RIG_VFO_A, &mode, &width);
-    *m = mode; *w = width;
-    qDebug() << "HamlibConnector::mrr_get_mode(): returned" << rc << "mode =" << mode << "width =" << width;
-    return rc;
+    return current_mode;
 }
 
 const char *HamlibConnector::mrr_getModeString(mode_t mode) {
 
     return rig_strrmode(mode);
+}
+
+int HamlibConnector::mrr_set_mode(mode_t mode) {
+
+    pbwidth_t w = rig_passband_normal(my_rig, mode);
+    qDebug() << "HamlibConnector::mrr_set_mode(): normal passband reported as" << w;
+    // int rc = rig_set_mode(my_rig, current_vfo, mode, RIG_PASSBAND_NOCHANGE);
+    int rc = rig_set_mode(my_rig, current_vfo, mode, w);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrr_set_mode() failed: rc = " << rigerror(rc);
+    }
+    current_mode = mode;
+
+    // Update bandwidth on change of mode
+    get_rig_mode_and_bw();
+    return rc;
+}
+
+pbwidth_t HamlibConnector::mrr_get_width() {
+
+    return current_pbwidth;
+}
+
+int HamlibConnector::bwidth_change_request(int bw){
+
+    int rc;
+
+    // qDebug() << "HamlibConnector::bwidth_change_request() with signal:" << "bw:" << bw;
+    rc = rig_set_mode(my_rig, current_vfo, current_mode, bw);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::bwidth_change_request(): rig_set_mode failed" << rigerror(rc);
+        return rc;
+    }
+    emit updateWidthSlider(bw);
+    current_pbwidth = bw;
+    return rc;
+}
+
+int HamlibConnector::get_rig_mode_and_bw() {
+
+    rmode_t mode;
+    pbwidth_t bw;
+
+    int rc = rig_get_mode(my_rig, current_vfo, &mode, &bw);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::get_rig_mode(): rig_get_mode failed" << rigerror(rc);
+    }
+    current_mode = mode;
+    current_pbwidth = bw;
+    return rc;
+}
+
+void HamlibConnector::mrrSetTune(int on) {
+
+    if ( on ) {
+        int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_TUNE, 1);
+        if ( rc != RIG_OK ) {
+            qDebug() << "HamlibConnector::mrrSetTune() failed: rc = " << rigerror(rc);
+        }
+    }
+    else {
+        mrrSetRx();
+    }
+}
+
+void HamlibConnector::mrrSetRx() {
+
+    int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_RX, 1);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrrSetRx() failed: rc = " << rigerror(rc);
+    }
 }

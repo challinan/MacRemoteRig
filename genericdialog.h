@@ -25,6 +25,9 @@ private:
 
 private slots:
      void pb_ok_clicked(QAbstractButton *button);
+
+signals:
+     void update_ui_sig();
 };
 
 #endif // GENERICDIALOG_H

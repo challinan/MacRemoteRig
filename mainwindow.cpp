@@ -8,8 +8,7 @@
 // #define SKIP_CONFIG_INIT
 
 MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
+    : QMainWindow(parent) , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
     this->setWindowTitle("Mac Remote Rig");
@@ -28,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
         qDebug() << " MainWindow::MainWindow() constructor: hamlib init returned" << hamlib_p->get_retcode();
 
     /* Update our Main (VFO_A) display window with the current VFO_A freq */
-    freq_t fA = hamlib_p->mrr_getFrequency(RIG_VFO_A);
+    freq_t fA = hamlib_p->mrr_getRigFrequency(RIG_VFO_A);
     QString str_tmp = HamlibConnector::get_display_frequency(fA);
 
     /* Initialize the freq window */
@@ -36,8 +35,8 @@ MainWindow::MainWindow(QWidget *parent)
     ui->freqDisplay->setSmallDecimalPoint(1);
     ui->freqDisplay->display(str_tmp);
 
-    /* Update our Sub (VFO_B) display window with the current VFO_B freq */
-    freq_t fB = hamlib_p->mrr_getFrequency(RIG_VFO_B);
+    /* Update our VFO_B display window with the current VFO_B freq */
+    freq_t fB = hamlib_p->mrr_getRigFrequency(RIG_VFO_B);
     str_tmp.clear();
     str_tmp = HamlibConnector::get_display_frequency(fB);
 
@@ -48,7 +47,6 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
 
     // Initialize S-Meter
-    qDebug() << "Initialize S Meter";
     // See comments at http://hamlib.sourceforge.net/manuals/4.3/group__rig.html about rig_get_level
     ui->smeterProgressBar->setMinimum(0);
     ui->smeterProgressBar->setMaximum(15);
@@ -65,6 +63,11 @@ MainWindow::MainWindow(QWidget *parent)
     ui->radioLabel->setFont(myFont);
     ui->radioLabel->setText("Elecraft K3");
 
+    // Initialize the width slider view
+    scene_p = new QGraphicsScene;
+    ui->bwidthGraphicsView->setScene(scene_p);
+    ui->bwidthGraphicsView->setInteractive(false);
+
     // Customize the "Fast" button to make it "Checkable"
     ui->fast_pButton->setCheckable(1);
 
@@ -73,11 +76,20 @@ MainWindow::MainWindow(QWidget *parent)
     // Start the listener thread for audio
     gstreamerListener_p = new GstreamerListener();
     gstreamerListener_p->start();  // start() unlike run() detaches and returns immediately
+
+    // Setup transmit window
+    pTextEdit = new QPlainTextEdit(parent);
+
+    // Connect Signals & Slots
+    connect(hamlib_p, &HamlibConnector::updateWidthSlider, this, &MainWindow::update_width_slider);
+    connect(this, &MainWindow::bwidth_change, hamlib_p, &HamlibConnector::bwidth_change_request);
+    connect(this, &MainWindow::refresh_rig_mode_bw, hamlib_p, &HamlibConnector::get_rig_mode_and_bw);
 }
 
 MainWindow::~MainWindow()
 {
     delete gstreamerListener_p;
+    delete scene_p;
     delete hamlib_p;
     delete ui;
 
@@ -128,7 +140,6 @@ void MainWindow::on_a_2_b_pbutton_clicked()
 
     pd->show();
     pd->exec();
-#endif
 
     // int rig_get_freqs(RIG *rig, freq_t *freqA, freq_t freqB );
     QString boxStr = "RIG_VFO_A = ";
@@ -138,7 +149,31 @@ void MainWindow::on_a_2_b_pbutton_clicked()
     QMessageBox msgBox1;
     msgBox1.setText(boxStr);
     msgBox1.exec();
+#endif
 
+    bw_timer = new QTimer(this);
+    connect(bw_timer, &QTimer::timeout, this, &MainWindow::do_bw_update );
+    bw_timer->start(50);
+
+}
+
+// For debug only
+void MainWindow::do_bw_update() {
+    static int loop_die = 0;
+    static int loop = 1;
+    static int direction = 1; // Up
+    const static int stop = 3000;
+    update_width_slider(loop);
+    if ( direction == 1 ) {
+        loop += 10;
+        if ( loop > stop ) { loop = 2700; direction = 0; }
+    }
+    else {
+        loop -= 10;
+        if ( loop < 1 ) { loop = 1; direction = 1; loop_die = 1; }
+    }
+    if ( loop_die ) { delete bw_timer; return; }
+    bw_timer->start(50);
 }
 
 // For debug only
@@ -166,13 +201,17 @@ void MainWindow::on_a_b_vfo_pbutton_clicked()
     hamlib_p->setSwapAB();
 
     // Update the displays
-    freq_t fA = hamlib_p->mrr_getFrequency(RIG_VFO_A);
+    freq_t fA = hamlib_p->mrr_getRigFrequency(RIG_VFO_A);
     QString str_tmp = HamlibConnector::get_display_frequency(fA);
     ui->freqDisplay->display(str_tmp);
     str_tmp.clear();
-    freq_t fB = hamlib_p->mrr_getFrequency(RIG_VFO_B);
+    freq_t fB = hamlib_p->mrr_getRigFrequency(RIG_VFO_B);
     str_tmp = HamlibConnector::get_display_frequency(fB);
     ui->freqBDisplay->display(str_tmp);
+
+    emit refresh_rig_mode_bw();
+    update_width_slider(hamlib_p->mrr_get_width());
+    // initialize_front_panel();
 }
 
 void MainWindow::on_afx_pbutton_clicked()
@@ -342,7 +381,42 @@ void MainWindow::on_band_pbutton_clicked()
 
 void MainWindow::on_mode_pbutton_clicked()
 {
-    qDebug() << "MainWindow::on_mode_pbutton_clicked()";
+    unsigned long i;
+    mode_t new_mode;
+    pbwidth_t width;
+    static unsigned long index = 0;
+    const static mode_t supported_modes [] = {
+        RIG_MODE_NONE,
+        RIG_MODE_AM,
+        RIG_MODE_CW,
+        RIG_MODE_USB,
+        RIG_MODE_LSB,
+        RIG_MODE_RTTY,
+        RIG_MODE_FM
+    };
+
+    mode_t m = hamlib_p->mrr_get_mode();
+    for ( i=1; i<sizeof(supported_modes); i++ ) {
+        if ( m == supported_modes[i] ) {
+            index = i;
+            break;
+        }
+    }
+    if ( supported_modes[index] == RIG_MODE_FM ) {
+        index = 1;  // Roll to top of list, neglecting the invalid mode RIG_MODE_NONE
+    } else {
+        index += 1;
+    }
+    new_mode = supported_modes[index];
+    int rc = hamlib_p->mrr_set_mode(new_mode);
+    if ( rc != RIG_OK ) {
+        qDebug() << "MainWindow::on_mode_pbutton_clicked(): mrr_set_mode() failed" << rc;
+    }
+
+    QString modeStr = hamlib_p->mrr_getModeString(new_mode);
+    ui->mode_pbutton->setText(modeStr);
+    width = hamlib_p->mrr_get_width();
+    update_width_slider(width);
 }
 
 void MainWindow::on_power_pbutton_clicked()
@@ -353,7 +427,8 @@ void MainWindow::on_power_pbutton_clicked()
 
 void MainWindow::on_tune_pbutton_clicked()
 {
-    qDebug() << "MainWindow::on_tune_pbutton_clicked()";
+    tuneDialog_p = new TuneDialog(this);
+
 }
 
 void MainWindow::on_upshift_pButton_clicked()
@@ -376,30 +451,88 @@ void MainWindow::on_downshift_pButton_clicked()
 
 void MainWindow::on_upwidth_pButton_clicked()
 {
-    qDebug() << "MainWindow::on_upwidth_pButton_clicked()";
+    int bw = hamlib_p->mrr_get_width() + BANDWIDTH_STEP;
+    // Validate max up range based on mode
+    emit bwidth_change(bw);
 }
 
 
 void MainWindow::on_centerWidth_pButton_clicked()
 {
-    qDebug() << "MainWindow::on_centerWidth_pButton_clicked()";
+    mode_t m = hamlib_p->mrr_get_mode();
+    pbwidth_t bw;
+    switch( m ) {
+    case RIG_MODE_CW:
+        bw = 800;
+        break;
+    case RIG_MODE_USB:
+    case RIG_MODE_LSB:
+    case RIG_MODE_RTTY:
+        bw = 2700;
+        break;
+    case RIG_MODE_FM:
+        bw = 5000;
+        break;
+    case RIG_MODE_AM:
+        bw = 5000;
+        break;
+    default:
+        qDebug() << "MainWindow::on_centerWidth_pButton_clicked(): invalid rig mode" << m;
+        bw = 1200;
+        break;
+    }
+    emit bwidth_change(bw);    // Center for CW
 }
 
 
 void MainWindow::on_downwidth_pButton_clicked()
 {
-    qDebug() << "MainWindow::on_downwidth_pButton_clicked()";
+    int bw = hamlib_p->mrr_get_width() - BANDWIDTH_STEP;
+    // Validate max down range based on mode
+    emit bwidth_change(bw);
 }
 
 void MainWindow::initialize_front_panel() {
 
-    // int rc = rig_get_freqs(my_rig, freq_t *freqA, freq_t freqB )
-    mode_t mode;
-    pbwidth_t width;
-    int rc = hamlib_p->mrr_get_mode(&mode, &width);
-    if ( rc != RIG_OK ) {
-        qDebug() << "MainWindow::initialize_front_panel(): error getting mode" << rc << rigerror(rc);
+
+    // Get frequencies
+
+    mode_t mode = hamlib_p->mrr_get_mode();
+
+    // Get and display current mode
+    QString modeStr = hamlib_p->mrr_getModeString(mode);
+    ui->mode_pbutton->setText(modeStr);
+
+    // Setup width control
+    pbwidth_t w = hamlib_p->mrr_get_width();
+    update_width_slider(w);
+}
+
+void MainWindow::update_width_slider(int w) {
+
+    float barcount;
+    int view_width_midpoint, offset;
+
+#define MAX_BARS 22
+#define BAR_WIDTH 8
+    if ( w > 2700 )
+        barcount = MAX_BARS;
+    else
+        barcount = ((float) w / 2700e0f) * MAX_BARS;
+    barcount = round(barcount / 2) * 2;         // Keep it an even number
+
+    // qDebug() << "Width = " << w << "Barcount = " << barcount;
+    scene_p->clear();
+    scene_p->setSceneRect(0, 0, 220, 30);
+    view_width_midpoint = ui->bwidthGraphicsView->rect().width() / 2;
+    offset = view_width_midpoint - ((barcount / 2) * 8);
+    // () << "MainWindow::update_width_slider(): barcount = " << barcount << "offset = " << offset;
+    for ( int i=0; i<(int)barcount; i++ ) {
+        // QRect r = QRect(((i+offset)*BAR_WIDTH), 0, 5, 20);
+        QRect r = QRect((i*8)+offset, 4, 5, 20);
+        scene_p->addRect(r, QPen(), QBrush(Qt::blue, Qt::SolidPattern));
     }
-    hamlib_p->mrr_getModeString(mode);
-    qDebug() << "MainWindow::initialize_front_panel() mode returned" << hamlib_p->mrr_getModeString(mode) << "width:" << width;
+    QString wStr = "";
+    wStr.setNum(w);
+    ui->bwLabel->setText(wStr);
 }

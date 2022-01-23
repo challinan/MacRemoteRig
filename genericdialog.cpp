@@ -21,38 +21,31 @@ GenericDialog::GenericDialog(QWidget *parent)
     QPushButton *pb_ok = pbox->button(QDialogButtonBox::Ok );
     if ( !pb_ok ) {
         qDebug() << "MainWindow::on_manual_pButton_clicked(): failed to get button pointer - exiting";
-        QApplication::quit();
+        QApplication::exit(5);
     }
     QDBB_dMemFn p = &QDialogButtonBox::clicked;
     connect(pbox, p, this, &GenericDialog::pb_ok_clicked);
+    connect(this, &GenericDialog::update_ui_sig, static_cast<MainWindow *>(parent), &MainWindow::initialize_front_panel);
     // pd->show();
     pd->exec();
 }
 
 void GenericDialog::pb_ok_clicked(QAbstractButton *button) {
     QString button_text = button->text();
-    qDebug() << "GenericDialog::pb_ok_clicked(): slot entered" << button << "text = " << button_text;
 
-    if ( button_text == "Cancel" ) {
-        qDebug() << "Cancel pushbutton pressed";
-    }
-    if ( button_text == "Ok" ) {
-        qDebug() << "GenericDialog::pb_ok_clicked(): OK Pushbutton pressed";
-    }
     QString freq_text = le->text();
-    qDebug() << "GenericDialog::pb_ok_clicked(): frequency entered = " << freq_text;
-    // double QString::toDouble(bool *ok = nullptr) const
     bool ok;
     freq_t f_new = freq_text.toDouble(&ok);
     if ( ok ) {
         f_new = f_new * 1000000.0;
-        qDebug() << "GenericDialog::pb_ok_clicked(): new frequency as double:" << f_new << " result = " << ok;
+        // qDebug() << "GenericDialog::pb_ok_clicked(): new frequency as double:" << f_new << " result = " << ok;
 
-        MainWindow *pMain = dynamic_cast<MainWindow *>(p_parent);
+        MainWindow *pMain = static_cast<MainWindow *>(p_parent);
         HamlibConnector *hlp = pMain->getHamlibPointer();
         hlp->set_rig_freq(f_new);
         hlp->autoupdate_frequency();
     }
+    emit update_ui_sig();
 
     pd->close();
 }
