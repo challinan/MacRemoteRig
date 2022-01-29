@@ -10,8 +10,10 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent) , ui(new Ui::MainWindow)
 {
+    // parent comes into this constructor as null
     ui->setupUi(this);
     this->setWindowTitle("Mac Remote Rig");
+    qDebug() << "MainWindow::MainWindow(): constructor entered: this =" << this;
 
 #ifdef SKIP_CONFIG_INIT
     // Initialize our config database
@@ -22,9 +24,9 @@ MainWindow::MainWindow(QWidget *parent)
     /* Initialize the rig */
     // HamlibConnector hamlibc;
 #ifndef SKIP_RIG_INIT
-        hamlib_p = new HamlibConnector;
-        hamlib_p->store_ui_pointer(ui);
-        qDebug() << " MainWindow::MainWindow() constructor: hamlib init returned" << hamlib_p->get_retcode();
+    hamlib_p = new HamlibConnector;
+    hamlib_p->store_ui_pointer(ui);
+    qDebug() << " MainWindow::MainWindow() constructor: hamlib init returned" << hamlib_p->get_retcode();
 
     /* Update our Main (VFO_A) display window with the current VFO_A freq */
     freq_t fA = hamlib_p->mrr_getRigFrequency(RIG_VFO_A);
@@ -44,7 +46,6 @@ MainWindow::MainWindow(QWidget *parent)
     ui->freqBDisplay->setDigitCount(8);
     ui->freqBDisplay->setSmallDecimalPoint(1);
     ui->freqBDisplay->display(str_tmp);
-#endif
 
     // Initialize S-Meter
     // See comments at http://hamlib.sourceforge.net/manuals/4.3/group__rig.html about rig_get_level
@@ -56,6 +57,7 @@ MainWindow::MainWindow(QWidget *parent)
     mrr_frequency_increment = INITIAL_FREQ_INCREMENT;       // Amount used by nudge to tune up or down the band
     up_pressed = down_pressed = 0;
     nudge_delay = INITIAL_NUDGE_DELAY;          // 500 mS initially
+#endif
 
     // Initialize the radio label
     qDebug() << "Initialize Radio label";
@@ -68,31 +70,52 @@ MainWindow::MainWindow(QWidget *parent)
     ui->bwidthGraphicsView->setScene(scene_p);
     ui->bwidthGraphicsView->setInteractive(false);
 
-    // Customize the "Fast" button to make it "Checkable"
+    // Customize the "Fast" and "PauseTX" buttons to make them "Checkable"
     ui->fast_pButton->setCheckable(1);
+    ui->pauseTXpbutton->setCheckable(1);
+
+    // Get the initial CW Speed value
+    int speed = hamlib_p->getCwSpeed();
+    if ( speed != -1 )
+        ui->cwSpeedValueLabel->setText(QString().setNum(speed));
 
     // Initialize other front panel status bits
+#ifndef SKIP_RIG_INIT
     initialize_front_panel();
+
     // Start the listener thread for audio
     gstreamerListener_p = new GstreamerListener();
     gstreamerListener_p->start();  // start() unlike run() detaches and returns immediately
+#endif
 
     // Setup transmit window
-    pTextEdit = new QPlainTextEdit(parent);
+    pTxEdit = new TransmitWindow(this, hamlib_p);
+    pTxEdit->setHamlibPointer(hamlib_p);
+#ifndef SKIP_RIG_INIT
 
     // Connect Signals & Slots
     connect(hamlib_p, &HamlibConnector::updateWidthSlider, this, &MainWindow::update_width_slider);
     connect(this, &MainWindow::bwidth_change, hamlib_p, &HamlibConnector::bwidth_change_request);
     connect(this, &MainWindow::refresh_rig_mode_bw, hamlib_p, &HamlibConnector::get_rig_mode_and_bw);
+#endif
 }
 
 MainWindow::~MainWindow()
 {
+    gstreamerListener_p->terminate();
+    gstreamerListener_p->wait();
     delete gstreamerListener_p;
+#ifndef SKIP_RIG_INIT
     delete scene_p;
     delete hamlib_p;
     delete ui;
+    delete pTxEdit;
+#endif
+}
 
+void MainWindow::keyPressEvent(QKeyEvent *event) {
+    // qDebug() << "MainWindow::keyPressEvent(): entered - centralWidget" << centralWidget() << "key =" << event->key();
+    QWidget::keyPressEvent(event);
 }
 
 HamlibConnector *MainWindow::getHamlibPointer() {
@@ -191,8 +214,10 @@ void MainWindow::on_editingFinished() {
 
 void MainWindow::on_quit_pbutton_clicked() {
     qDebug() << "on_quit_pbutton_clicked() called";
+#ifndef SKIP_RIG_INIT
     gstreamerListener_p->terminate();
     gstreamerListener_p->wait();
+#endif
     QApplication::exit(0);
 }
 
@@ -535,4 +560,35 @@ void MainWindow::update_width_slider(int w) {
     QString wStr = "";
     wStr.setNum(w);
     ui->bwLabel->setText(wStr);
+}
+
+void MainWindow::on_abortTXpbutton_clicked()
+{
+    hamlib_p->abortTX();
+}
+
+void MainWindow::on_pauseTXpbutton_toggled(bool checked)
+{
+    qDebug() << "MainWindow::on_pauseTXpbutton_toggled(): checked =" << checked;
+    hamlib_p->setPauseTx(checked);
+}
+
+void MainWindow::on_upCwSpeedpButton_clicked()
+{
+
+    qDebug() << "MainWindow::on_upCwSpeedpButton_clicked(): entered";
+    int s = hamlib_p->bumpCwSpeed(true);
+    if ( s == -1 )
+        return;
+    ui->cwSpeedValueLabel->setText(QString().setNum(s));
+}
+
+void MainWindow::on_dnCwSpeedpButton_clicked()
+{
+    qDebug() << "MainWindow::on_dnCwSpeedpButton_clicked(): entered";
+    int s = hamlib_p->bumpCwSpeed(false);
+    if ( s == -1 )
+        return;
+    ui->cwSpeedValueLabel->setText(QString().setNum(s));
+
 }

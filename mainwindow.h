@@ -10,12 +10,12 @@
 #include <QList>
 #include <QTimer>
 #include <QThread>
-#include <QPlainTextEdit>
 #include "hamlibconnector.h"
 #include "frequencypoller.h"
 #include "config_object.h"
 #include "genericdialog.h"
 #include "tune_dialog.h"
+#include "transmitwindow.h"
 #include "gstreamerlistener.h"
 // For debug only
 #include <QLineEdit>
@@ -30,6 +30,8 @@ QT_END_NAMESPACE
 #define AUTONUDGE_DELAY 50
 #define INITIAL_FREQ_INCREMENT 10
 #define FAST_FREQ_INCREMENT 100
+
+class TransmitWindow;
 
 class MainWindow : public QMainWindow
 {
@@ -63,6 +65,9 @@ public slots:
     void nudge_timer_action();
     void initialize_front_panel();
 
+protected:
+     void keyPressEvent(QKeyEvent *event) override;
+
 private slots:
      void on_uptune_pButton_pressed();
     void on_downtune_pButton_pressed();
@@ -85,6 +90,11 @@ private slots:
     void on_centerWidth_pButton_clicked();
     void on_downwidth_pButton_clicked();
     void update_width_slider(int w = 0);
+    void on_abortTXpbutton_clicked();
+    void on_pauseTXpbutton_toggled(bool b);
+    void on_dnCwSpeedpButton_clicked();
+    void on_upCwSpeedpButton_clicked();
+
 
 private:
     void nudgeFrequency(int direction);
@@ -108,7 +118,7 @@ private:
     int nudge_delay;
     GstreamerListener *gstreamerListener_p;
     QGraphicsScene *scene_p;
-    QPlainTextEdit *pTextEdit;
+    TransmitWindow *pTxEdit;
 
     // For Debug
     QTimer *bw_timer;

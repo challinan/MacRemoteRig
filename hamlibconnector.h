@@ -36,16 +36,22 @@ public:
     int get_retcode(void);
     mode_t mrr_get_mode();
     int mrr_set_mode(mode_t mode);
+    int mrr_set_level(setting_t level, value_t v);
     pbwidth_t mrr_get_width();
     void setSpot();
     void setSwapAB();
     const char *mrr_getModeString(mode_t mode);
+    void abortTX();
+    int getCwSpeed();
+    int bumpCwSpeed(bool up);
+    void setPauseTx(bool checked);
 
 public slots:
     int bwidth_change_request(int up_or_down);
     void mrrSetTune(int on);
     float read_rig_swr();
     void mrrSetRx();
+    void txCW_Char(char c);
 
 private:
     RIG *my_rig;        /* handle to rig (instance) */
@@ -66,7 +72,7 @@ private:
     rmode_t current_mode;
     pbwidth_t current_pbwidth;
     const char *modeStr_p;
-
+    int cw_speed;
 
 private:
 
@@ -85,6 +91,9 @@ public slots:
 
 signals:
     void updateWidthSlider(pbwidth_t w);
+    void pauseTxSig(bool pause);
+
+private slots:
 
 };
 

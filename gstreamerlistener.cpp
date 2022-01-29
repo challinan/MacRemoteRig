@@ -64,6 +64,7 @@ void GstreamerListener::run() {
 
 gboolean GstreamerListener::bus_callback(GstBus *bus, GstMessage *msg, gpointer data)
 {
+    (void) bus;
     GMainLoop *loop = (GMainLoop *) data;
 
     switch (GST_MESSAGE_TYPE (msg)) {

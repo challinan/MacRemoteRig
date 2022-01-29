@@ -15,7 +15,7 @@ private:
     GstElement *pipeline;
     GError *gst_error = NULL;
     GstBus *bus;
-    GstMessage *msg;
+    // GstMessage *msg;
     int argc = 0;
     char **argv;
     static gboolean bus_callback(GstBus *bus, GstMessage *msg, gpointer data);

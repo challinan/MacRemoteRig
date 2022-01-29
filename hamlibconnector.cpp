@@ -268,3 +268,71 @@ void HamlibConnector::mrrSetRx() {
         qDebug() << "HamlibConnector::mrrSetRx() failed: rc = " << rigerror(rc);
     }
 }
+
+void HamlibConnector::txCW_Char(char c) {
+    qDebug() << "HamlibConnector::txCW_Char(): Entered with " << c;;
+    unsigned char buff[16];
+    value_t val;
+    val.b.d = buff;
+    val.b.l = 1;    // Message length
+    buff[0] = c;
+    buff[1] = '\0';
+
+    mrr_set_level(RIG_LEVEL_CWTX, val);
+}
+
+int HamlibConnector::mrr_set_level(setting_t level, value_t val) {
+
+    int rc = rig_set_level(my_rig, current_vfo, level, val);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrr_set_level() failed: rc = " << rigerror(rc);
+    }
+    return rc;
+}
+
+void HamlibConnector::abortTX() {
+    qDebug() << "HamlibConnector::abortTX(): entered";
+    mrrSetRx();
+}
+
+int HamlibConnector::getCwSpeed() {
+    int rc;
+    value_t val;
+    qDebug() << " ";
+    qDebug() << "********************************************************************";
+    rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_CWSPEED, &val);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::getCwSpeed(): failed" << rigerror(rc);
+        return -1;
+    }
+    qDebug() << "HamlibConnector::getCwSpeed(): returned" << val.i;
+    cw_speed = val.i;
+    return val.i;
+}
+
+int HamlibConnector::bumpCwSpeed(bool up) {
+
+    value_t val;
+    // Rig limits: 8 - 50wpm
+    if ( up == true ) {
+        cw_speed = (cw_speed >= 50) ? 50 : ++cw_speed;
+        val.i =  cw_speed;
+    } else {
+        cw_speed = (cw_speed <= 8) ? 8 : --cw_speed;
+        val.i = cw_speed;
+    }
+
+    qDebug() << "HamlibConnector::bumpCwSpeed(): new value is" << cw_speed;
+
+    int rc = rig_set_level(my_rig, current_vfo, RIG_LEVEL_CWSPEED, val);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::bumpCwSpeed(): failed" << rigerror(rc);
+        return -1;
+    }
+    return cw_speed;
+}
+
+void HamlibConnector::setPauseTx(bool checked) {
+    emit pauseTxSig(checked);
+    qDebug() << "HamlibConnector::setPauseTx(): paused =" << checked;
+}
