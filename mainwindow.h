@@ -17,8 +17,12 @@
 #include "tune_dialog.h"
 #include "transmitwindow.h"
 #include "gstreamerlistener.h"
+#include "icon_defines.h"
+
 // For debug only
 #include <QLineEdit>
+
+// #define SKIP_RIG_INIT
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -96,6 +100,8 @@ private slots:
     void on_upCwSpeedpButton_clicked();
 
 
+    void on_ic_pbutton_clicked();
+
 private:
     void nudgeFrequency(int direction);
     void worker_thread();
@@ -119,6 +125,7 @@ private:
     GstreamerListener *gstreamerListener_p;
     QGraphicsScene *scene_p;
     TransmitWindow *pTxEdit;
+    char ic_bits[5];
 
     // For Debug
     QTimer *bw_timer;

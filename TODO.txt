@@ -1,4 +1,4 @@
 1) Set Baud Rate from application - STTY doesn't work on MAC OS X
 2) Configure Radio from application
 3) Configure connection method from application
-4)
+4) Set immediate RX after ESC - see transmitwindow.cpp:194

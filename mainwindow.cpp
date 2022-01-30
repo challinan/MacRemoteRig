@@ -4,7 +4,6 @@
 #include "genericdialog.h"
 #include "gstreamerlistener.h"
 
-// #define SKIP_RIG_INIT
 // #define SKIP_CONFIG_INIT
 
 MainWindow::MainWindow(QWidget *parent)
@@ -75,12 +74,13 @@ MainWindow::MainWindow(QWidget *parent)
     ui->pauseTXpbutton->setCheckable(1);
 
     // Get the initial CW Speed value
+#ifndef SKIP_RIG_INIT
     int speed = hamlib_p->getCwSpeed();
     if ( speed != -1 )
         ui->cwSpeedValueLabel->setText(QString().setNum(speed));
 
+
     // Initialize other front panel status bits
-#ifndef SKIP_RIG_INIT
     initialize_front_panel();
 
     // Start the listener thread for audio
@@ -102,10 +102,10 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+#ifndef SKIP_RIG_INIT
     gstreamerListener_p->terminate();
     gstreamerListener_p->wait();
     delete gstreamerListener_p;
-#ifndef SKIP_RIG_INIT
     delete scene_p;
     delete hamlib_p;
     delete ui;
@@ -531,6 +531,10 @@ void MainWindow::initialize_front_panel() {
     // Setup width control
     pbwidth_t w = hamlib_p->mrr_get_width();
     update_width_slider(w);
+
+    // Set Icons
+    ui->voxLabel->setText("");
+    ui->txTestLabel->setText("");
 }
 
 void MainWindow::update_width_slider(int w) {
@@ -592,3 +596,18 @@ void MainWindow::on_dnCwSpeedpButton_clicked()
     ui->cwSpeedValueLabel->setText(QString().setNum(s));
 
 }
+
+void MainWindow::on_ic_pbutton_clicked()
+{
+    hamlib_p->mrr_get_ic_config(ic_bits);
+
+    qDebug() << "MainWindow::on_ic_pbutton_clicked(): returned this";
+    for ( int i=0; i<5; i++ )
+        qDebug() << "    " << Qt::hex << (unsigned int) ic_bits[i];
+
+    if ( ic_bits[2] & K3_ICON_VOX ) ui->voxLabel->setText("VOX");
+    if ( ic_bits[0] & K3_ICON_TXTEST)  ui->txTestLabel->setText("TXTEST"); else ui->txTestLabel->setText("TXNORM");
+    qDebug() << "VOX =" << Qt::hex << K3_ICON_VOX;
+    qDebug() << "QSK =" << Qt::hex << K3_ICON_QSKFULL;
+}
+

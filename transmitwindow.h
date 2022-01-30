@@ -77,6 +77,8 @@ private:
      CWTX_Thread *tx_thread_p;
      CBuffer ccbuf;
      HamlibConnector *hamlib_p;
+     // For debug only
+     int debug_count;
 
 signals:
      void startTx(bool start);

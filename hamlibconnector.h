@@ -45,13 +45,14 @@ public:
     int getCwSpeed();
     int bumpCwSpeed(bool up);
     void setPauseTx(bool checked);
+    void mrr_get_ic_config(char *p);
 
 public slots:
     int bwidth_change_request(int up_or_down);
     void mrrSetTune(int on);
     float read_rig_swr();
     void mrrSetRx();
-    void txCW_Char(char c);
+    int txCW_Char(char c);
 
 private:
     RIG *my_rig;        /* handle to rig (instance) */

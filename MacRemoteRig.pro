@@ -36,6 +36,7 @@ HEADERS += \
     gstreamerlistener.h \
     hamlibconnector.h \
     config_object.h \
+    icon_defines.h \
     mainwindow.h \
     spot_delayworker.h \
     transmitwindow.h \

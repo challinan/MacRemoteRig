@@ -7,8 +7,8 @@
 HamlibConnector::HamlibConnector(QObject *parent)
     : QObject{parent}
 {
-    verbose = RIG_DEBUG_NONE;
-    // verbose = RIG_DEBUG_TRACE;
+    //  verbose = RIG_DEBUG_NONE;
+    verbose = RIG_DEBUG_TRACE;
 
 #if 0
     // Figure out how we're configured - ie what rig and device
@@ -269,16 +269,14 @@ void HamlibConnector::mrrSetRx() {
     }
 }
 
-void HamlibConnector::txCW_Char(char c) {
-    qDebug() << "HamlibConnector::txCW_Char(): Entered with " << c;;
-    unsigned char buff[16];
-    value_t val;
-    val.b.d = buff;
-    val.b.l = 1;    // Message length
-    buff[0] = c;
-    buff[1] = '\0';
+int HamlibConnector::txCW_Char(char c) {
 
-    mrr_set_level(RIG_LEVEL_CWTX, val);
+    char c_tmp = c;
+    int rc;
+
+    qDebug() << "HamlibConnector::txCW_Char(): Entered with " << c;;
+    rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_CWTX, c_tmp);
+    return rc;
 }
 
 int HamlibConnector::mrr_set_level(setting_t level, value_t val) {
@@ -335,4 +333,14 @@ int HamlibConnector::bumpCwSpeed(bool up) {
 void HamlibConnector::setPauseTx(bool checked) {
     emit pauseTxSig(checked);
     qDebug() << "HamlibConnector::setPauseTx(): paused =" << checked;
+}
+
+void HamlibConnector::mrr_get_ic_config(char *p) {
+
+    value_t val;
+    val.s = p;  // Storage in mainwindow.cpp
+    int rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_ICONSTATUS, &val);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrr_get_ic_config(): failed" << rigerror(rc);
+    }
 }

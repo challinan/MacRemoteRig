@@ -97,6 +97,8 @@ TransmitWindow::TransmitWindow(QMainWindow *parent, HamlibConnector *phamlib)
     last_size = 0;
     is_transmitting = false;
     key_count = 0;
+    // For debug only
+    debug_count = 0;
 
     // Initialize circular buffer
     ccbuf.clear();
@@ -112,8 +114,10 @@ TransmitWindow::TransmitWindow(QMainWindow *parent, HamlibConnector *phamlib)
     connect(this, &QTextEdit::textChanged, this, &TransmitWindow::processTextChanged);
     // connect(this, &QTextEdit::blockCountChanged, this, &TransmitWindow::updateBlockCount);
     connect(this, &QTextEdit::cursorPositionChanged, this, &TransmitWindow::CursorPositionChangedSlot);
+#ifndef SKIP_RIG_INIT
     qDebug() << "TransmitWindow::TransmitWindow(): ******************* hamlib_p =" << hamlib_p;
     connect(hamlib_p, &HamlibConnector::pauseTxSig, tx_thread_p, &CWTX_Thread::pauseTx);
+#endif
 #ifdef ENABLE_TX_THREAD
     connect(this, &TransmitWindow::startTx, tx_thread_p, &CWTX_Thread::startStopTX);
     connect(tx_thread_p, &CWTX_Thread::deQueueChar, this, &TransmitWindow::markCharAsSent);
@@ -134,9 +138,11 @@ void TransmitWindow::keyReleaseEvent(QKeyEvent *event) {
 
     CBuffer &bf = ccbuf;
 
-    if ( event->key() == 92 ) return;   // backslash key
+    if ( event->key() == Qt::Key_Backslash ) {
+        return;   // backslash key
+    }
 
-    // qDebug() << "TransmitWindow::keyReleaseEvent():" << event->key();
+    debug_count++;
     highlightTextSem.acquire();
     moveCursor(QTextCursor::End, QTextCursor::MoveAnchor);
     setCurrentCharFormat(norm);
@@ -185,6 +191,7 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
         last_size = 0;
         tx_position = 0;
         key_count = 0;
+        debug_count = 0;
         bufferSem.acquire();
         bf.clear();      // Clear our circular buffer
         bufferSem.release();
@@ -239,7 +246,7 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
     }
 
     if ( key == Qt::Key_Backslash ) {
-        qDebug() << R"(\\\\\)" << "text window size" << toPlainText().size();
+        qDebug() << R"(\\\\\)" << "text window size" << toPlainText().size() << "debug count" << debug_count << "tx_position" << tx_position;
         return;
     }
 
@@ -270,6 +277,7 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
         // Ignore this character - buffer is full
         return;
     }
+    emit startTx(true);
 
     // Reset the text formatting
     // At this point, the character reported by this event hasn't hit the text window yet.
@@ -302,7 +310,7 @@ void TransmitWindow::markCharAsSent(char c) {
     (void)c;    // Suppress unused warning
     int size = toPlainText().size();
     // Did we get a clear() event (ESC)?
-    if ( size < 1 ) return;
+    if ( size == 0 ) return;
 
     tx_position++;
     highlightTextSem.acquire();
@@ -317,6 +325,7 @@ void TransmitWindow::markCharAsSent(char c) {
     }
     cursor.setCharFormat(f);
     highlightTextSem.release();
+    qDebug() << "TransmitWindow::mackCharAsSent(): debug count =" << debug_count << "tx_position =" << tx_position;
 #endif
 }
 
@@ -370,17 +379,21 @@ void CWTX_Thread::run() {
                 qDebug() << "WTX_Thread::run(): buffer empty";
                 continue;  // Is this what we want to do here?
             }
-            qDebug() << QDateTime::currentMSecsSinceEpoch() << "CWTX_Thread::run(): deQueueing char" << c;
-            // This won't work yet - see mainwindow.cpp:90
+            // qDebug() << QDateTime::currentMSecsSinceEpoch() << "CWTX_Thread::run(): deQueueing char" << c;
             emit deQueueChar(c);
+#ifdef SKIP_RIG_INIT
+            QThread::msleep(50);
+#endif
+#ifndef SKIP_RIG_INIT
             emit txChar(c);
+#endif
         }
-        QThread::msleep(50);
+        QThread::msleep(10);
     }
 }
 
 void CWTX_Thread::startStopTX(bool start) {
-    qDebug() << QDateTime::currentMSecsSinceEpoch() << "CWTX_Thread::startStopTX() signal received:" << start;
+    // qDebug() << QDateTime::currentMSecsSinceEpoch() << "CWTX_Thread::startStopTX() signal received:" << start;
     if ( start == true )
         transmitNow = true;
     else
