@@ -7,8 +7,8 @@
 HamlibConnector::HamlibConnector(QObject *parent)
     : QObject{parent}
 {
-    //  verbose = RIG_DEBUG_NONE;
-    verbose = RIG_DEBUG_TRACE;
+    verbose = RIG_DEBUG_NONE;
+    // verbose = RIG_DEBUG_TRACE;
 
 #if 0
     // Figure out how we're configured - ie what rig and device
@@ -342,5 +342,14 @@ void HamlibConnector::mrr_get_ic_config(char *p) {
     int rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_ICONSTATUS, &val);
     if ( rc != RIG_OK ) {
         qDebug() << "HamlibConnector::mrr_get_ic_config(): failed" << rigerror(rc);
+    }
+}
+
+void HamlibConnector::mrr_set_tx_test() {
+
+    // This is a toggle function - needs no "value"
+    int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_TXTEST, 0);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrr_set_tx_test(): failed" << rigerror(rc);
     }
 }

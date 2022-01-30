@@ -12,7 +12,7 @@ ConfigObject::ConfigObject(QObject *parent)
     if ( size > 1 ) {
         // Something strange happened - this function should return $HOME
         qDebug() << "ConfigObject constructor encountered multiple home locations - exiting";
-        QApplication::quit();
+        QApplication::exit(3);
     }
 
     file.setFileName(strList.at(0) + QString("/.macrr/macremote-config.ini"));

@@ -69,9 +69,10 @@ MainWindow::MainWindow(QWidget *parent)
     ui->bwidthGraphicsView->setScene(scene_p);
     ui->bwidthGraphicsView->setInteractive(false);
 
-    // Customize the "Fast" and "PauseTX" buttons to make them "Checkable"
+    // Customize the "Fast", "PauseTX" and "Tx Test" buttons to make them "Checkable"
     ui->fast_pButton->setCheckable(1);
     ui->pauseTXpbutton->setCheckable(1);
+    ui->txtest_pbutton->setCheckable(1);
 
     // Get the initial CW Speed value
 #ifndef SKIP_RIG_INIT
@@ -82,6 +83,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Initialize other front panel status bits
     initialize_front_panel();
+    getConfigIconBits();
 
     // Start the listener thread for audio
     gstreamerListener_p = new GstreamerListener();
@@ -597,17 +599,22 @@ void MainWindow::on_dnCwSpeedpButton_clicked()
 
 }
 
-void MainWindow::on_ic_pbutton_clicked()
+void MainWindow::getConfigIconBits()
 {
     hamlib_p->mrr_get_ic_config(ic_bits);
 
-    qDebug() << "MainWindow::on_ic_pbutton_clicked(): returned this";
-    for ( int i=0; i<5; i++ )
-        qDebug() << "    " << Qt::hex << (unsigned int) ic_bits[i];
-
     if ( ic_bits[2] & K3_ICON_VOX ) ui->voxLabel->setText("VOX");
-    if ( ic_bits[0] & K3_ICON_TXTEST)  ui->txTestLabel->setText("TXTEST"); else ui->txTestLabel->setText("TXNORM");
-    qDebug() << "VOX =" << Qt::hex << K3_ICON_VOX;
-    qDebug() << "QSK =" << Qt::hex << K3_ICON_QSKFULL;
+    if ( ic_bits[0] & K3_ICON_TXTEST )  ui->txTestLabel->setText("TXTEST"); else ui->txTestLabel->setText("TXNORM");
+}
+
+
+void MainWindow::on_txtest_pbutton_clicked()
+{
+    qDebug() << "MainWindow::on_txtest_pbutton_clicked(): entered";
+    hamlib_p->mrr_set_tx_test();
+
+    // Now retrieve the value from the rig
+    hamlib_p->mrr_get_ic_config(ic_bits);
+    if ( ic_bits[0] & K3_ICON_TXTEST )  ui->txTestLabel->setText("TXTEST"); else ui->txTestLabel->setText("TXNORM");
 }
 

@@ -68,6 +68,7 @@ public slots:
     void on_editingFinished();
     void nudge_timer_action();
     void initialize_front_panel();
+    void getConfigIconBits();
 
 protected:
      void keyPressEvent(QKeyEvent *event) override;
@@ -98,9 +99,7 @@ private slots:
     void on_pauseTXpbutton_toggled(bool b);
     void on_dnCwSpeedpButton_clicked();
     void on_upCwSpeedpButton_clicked();
-
-
-    void on_ic_pbutton_clicked();
+    void on_txtest_pbutton_clicked();
 
 private:
     void nudgeFrequency(int direction);
