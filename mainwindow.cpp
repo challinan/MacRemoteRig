@@ -80,10 +80,13 @@ MainWindow::MainWindow(QWidget *parent)
     if ( speed != -1 )
         ui->cwSpeedValueLabel->setText(QString().setNum(speed));
 
-
     // Initialize other front panel status bits
-    initialize_front_panel();
     getConfigIconBits();
+    qDebug() << "MainWindow::MainWindow(): sizeof band_index =" << sizeof(band_index) / sizeof(band_index[0]);
+    for ( int i=0; i< (int) (sizeof(band_index) / (int) sizeof(band_index[0])); i++ ) {
+        ui->band_comboBox->insertItem(band_index[i].index, band_index[i].band);
+    }
+    initialize_front_panel();
 
     // Start the listener thread for audio
     gstreamerListener_p = new GstreamerListener();
@@ -137,49 +140,9 @@ void MainWindow::on_poll_freq_pbutton_clicked() {
 
 void MainWindow::on_a_2_b_pbutton_clicked()
 {
-    qDebug() << "on_a_2_b_pbutton_clicked unimplemented";
-# if 0
-    // For debug only
-    QDialog *pd = new QDialog();
-    pd->setMinimumSize(QSize(400, 200));
-    f_edit = new QLineEdit(pd);
-    f_edit->setGeometry(100, 20, 200, 20);
-    lcd_p = new QLCDNumber(pd);
-    lcd_p->setGeometry(100, 100, 200, 50);
-    lcd_p->setDigitCount(8);
-    lcd_p->setSmallDecimalPoint(1);
-
-    connect(f_edit, &QLineEdit::editingFinished, this, &MainWindow::on_editingFinished)
-
-    pd->show();
-    pd->exec();
-#endif
-
-#if 0       // Standalone debug test dialog
-    // More debug code
-    QDialog *pd = new QDialog();
-    pd->setMinimumSize(QSize(800, 800));
-    upbutton_p = new QPushButton("⬆︎", pd);
-    // connect(upbutton_p, &QPushButton::pressed, this, &MainWindow::on_uptune_pButton_pressed);
-    // button.show();
-
-    pd->show();
-    pd->exec();
-
-    // int rig_get_freqs(RIG *rig, freq_t *freqA, freq_t freqB );
-    QString boxStr = "RIG_VFO_A = ";
-    QString vfo_number = "";
-    vfo_number.setNum(RIG_VFO_A);
-    boxStr.append(vfo_number);
-    QMessageBox msgBox1;
-    msgBox1.setText(boxStr);
-    msgBox1.exec();
-#endif
-
-    bw_timer = new QTimer(this);
-    connect(bw_timer, &QTimer::timeout, this, &MainWindow::do_bw_update );
-    bw_timer->start(50);
-
+    qDebug() << "on_a_2_b_pbutton_clicked: entered";
+    hamlib_p->mrr_a_2_b();
+    initialize_front_panel();
 }
 
 // For debug only
@@ -231,7 +194,7 @@ void MainWindow::on_a_b_vfo_pbutton_clicked()
     freq_t fA = hamlib_p->mrr_getRigFrequency(RIG_VFO_A);
     QString str_tmp = HamlibConnector::get_display_frequency(fA);
     ui->freqDisplay->display(str_tmp);
-    str_tmp.clear();
+    // str_tmp.clear();
     freq_t fB = hamlib_p->mrr_getRigFrequency(RIG_VFO_B);
     str_tmp = HamlibConnector::get_display_frequency(fB);
     ui->freqBDisplay->display(str_tmp);
@@ -521,8 +484,15 @@ void MainWindow::on_downwidth_pButton_clicked()
 
 void MainWindow::initialize_front_panel() {
 
+    int band;
 
     // Get frequencies
+    freq_t fA = hamlib_p->mrr_getRigFrequency(RIG_VFO_A);
+    QString str_tmp = HamlibConnector::get_display_frequency(fA);
+    ui->freqDisplay->display(str_tmp);
+    freq_t fB = hamlib_p->mrr_getRigFrequency(RIG_VFO_B);
+    str_tmp = HamlibConnector::get_display_frequency(fB);
+    ui->freqBDisplay->display(str_tmp);
 
     mode_t mode = hamlib_p->mrr_get_mode();
 
@@ -535,8 +505,12 @@ void MainWindow::initialize_front_panel() {
     update_width_slider(w);
 
     // Set Icons
-    ui->voxLabel->setText("");
-    ui->txTestLabel->setText("");
+    getConfigIconBits();
+
+    // Check band and set band combobox
+    band = hamlib_p->mrr_get_band();
+    qDebug() << "MainWindow::initialize_front_panel(): ***********************band" << band;
+    ui->band_comboBox->setCurrentIndex(band);
 }
 
 void MainWindow::update_width_slider(int w) {
@@ -604,17 +578,32 @@ void MainWindow::getConfigIconBits()
     hamlib_p->mrr_get_ic_config(ic_bits);
 
     if ( ic_bits[2] & K3_ICON_VOX ) ui->voxLabel->setText("VOX");
-    if ( ic_bits[0] & K3_ICON_TXTEST )  ui->txTestLabel->setText("TXTEST"); else ui->txTestLabel->setText("TXNORM");
+    if ( ic_bits[0] & K3_ICON_TXTEST )  {
+        ui->txTestLabel->setText("TXTEST");
+        ui->txtest_pbutton->setChecked(true);
+    } else {
+        ui->txTestLabel->setText("TXNORM");
+        ui->txtest_pbutton->setChecked(false);
+    }
 }
 
 
 void MainWindow::on_txtest_pbutton_clicked()
 {
-    qDebug() << "MainWindow::on_txtest_pbutton_clicked(): entered";
+    qDebug() << "MainWindow::on_txtest_pbutton_clicked(): entered - checked =" << ui->txtest_pbutton->isChecked();
     hamlib_p->mrr_set_tx_test();
 
     // Now retrieve the value from the rig
     hamlib_p->mrr_get_ic_config(ic_bits);
     if ( ic_bits[0] & K3_ICON_TXTEST )  ui->txTestLabel->setText("TXTEST"); else ui->txTestLabel->setText("TXNORM");
+}
+
+
+void MainWindow::on_band_comboBox_activated(int band)
+{
+    qDebug() << "MainWindow::on_band_comboBox_activated(): entered" << band;
+    hamlib_p->mrr_set_band(band);
+    QThread::msleep(400);  // Band changes require minimum of 300ms
+    initialize_front_panel();
 }
 

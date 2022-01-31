@@ -9,10 +9,11 @@
 #include <QApplication>
 #include <QThread>
 #include <QDebug>
-// #include "mainwindow.h"
+#include "mainwindow.h"
 #include "hamlibconnector.h"
 
 class TuneThread;
+class MainWindow;
 
 class TuneDialog : public QObject
 {
@@ -32,7 +33,7 @@ private:
          TuneThread *tp;
          QPushButton *close_pb;
          QPushButton *tune_pb;
-         void *pMainWindow;
+         MainWindow *pMainWindow;
          int tuning;
 
 public:
@@ -44,7 +45,7 @@ private slots:
     void updateSWR(float s);
 
 signals:
-    void setTune_sig(int on);
+    void setTune_sig(bool on);
 
 };
 

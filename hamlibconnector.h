@@ -47,10 +47,13 @@ public:
     void setPauseTx(bool checked);
     void mrr_get_ic_config(char *p);
     void mrr_set_tx_test();
+    void mrr_set_band(int band);
+    int mrr_get_band();
+    void mrr_a_2_b();
 
 public slots:
     int bwidth_change_request(int up_or_down);
-    void mrrSetTune(int on);
+    void mrrSetTune(bool on);
     float read_rig_swr();
     void mrrSetRx();
     int txCW_Char(char c);

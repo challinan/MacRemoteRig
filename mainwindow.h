@@ -35,7 +35,27 @@ QT_END_NAMESPACE
 #define INITIAL_FREQ_INCREMENT 10
 #define FAST_FREQ_INCREMENT 100
 
+typedef struct {
+    int index;
+    QString band;
+} band_index_t;
+
+static const band_index_t band_index[] = {
+    {0, "160"},
+    {1, "80"},
+    {2, "60"},
+    {3, "40"},
+    {4, "30"},
+    {5, "20"},
+    {6, "17"},
+    {7, "15"},
+    {8, "12"},
+    {9, "10"},
+    {10, "6"}
+};
+
 class TransmitWindow;
+class TuneDialog;
 
 class MainWindow : public QMainWindow
 {
@@ -100,6 +120,8 @@ private slots:
     void on_dnCwSpeedpButton_clicked();
     void on_upCwSpeedpButton_clicked();
     void on_txtest_pbutton_clicked();
+
+    void on_band_comboBox_activated(int index);
 
 private:
     void nudgeFrequency(int direction);

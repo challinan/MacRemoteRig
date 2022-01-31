@@ -7,8 +7,8 @@
 HamlibConnector::HamlibConnector(QObject *parent)
     : QObject{parent}
 {
-    verbose = RIG_DEBUG_NONE;
-    // verbose = RIG_DEBUG_TRACE;
+    // verbose = RIG_DEBUG_NONE;
+        verbose = RIG_DEBUG_TRACE;
 
 #if 0
     // Figure out how we're configured - ie what rig and device
@@ -18,7 +18,6 @@ HamlibConnector::HamlibConnector(QObject *parent)
 
     my_model = RIG_MODEL_K3;
     rig_set_debug(verbose);
-    // my_rig = rig_init(RIG_MAKE_MODEL(RIG_YAESU, 35));
     my_rig = rig_init(my_model);
     if (!my_rig) {
         qDebug() << "Unknown rig num " << my_model << "or initialization error\n";
@@ -248,7 +247,7 @@ int HamlibConnector::get_rig_mode_and_bw() {
     return rc;
 }
 
-void HamlibConnector::mrrSetTune(int on) {
+void HamlibConnector::mrrSetTune(bool on) {
 
     if ( on ) {
         int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_TUNE, 1);
@@ -296,8 +295,6 @@ void HamlibConnector::abortTX() {
 int HamlibConnector::getCwSpeed() {
     int rc;
     value_t val;
-    qDebug() << " ";
-    qDebug() << "********************************************************************";
     rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_CWSPEED, &val);
     if ( rc != RIG_OK ) {
         qDebug() << "HamlibConnector::getCwSpeed(): failed" << rigerror(rc);
@@ -351,5 +348,33 @@ void HamlibConnector::mrr_set_tx_test() {
     int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_TXTEST, 0);
     if ( rc != RIG_OK ) {
         qDebug() << "HamlibConnector::mrr_set_tx_test(): failed" << rigerror(rc);
+    }
+}
+
+void HamlibConnector::mrr_set_band(int band) {
+
+    int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_BANDNUM, band);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrr_set_band(): failed" << rigerror(rc);
+    }
+}
+
+int HamlibConnector::mrr_get_band() {
+
+    int band, rc;
+    qDebug() << "HamlibConnector::mrr_get_band(): **********************************************************";
+    rc = rig_get_func(my_rig, current_vfo, RIG_FUNC_BANDNUM, &band);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrr_get_band(): failed" << rigerror(rc);
+    }
+    qDebug() << "HamlibConnector::mrr_get_band(): band =" << band;
+    return band;
+}
+
+void HamlibConnector::mrr_a_2_b() {
+
+    int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_VFOA2B, 0);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrr_a_2_b(): failed" << rigerror(rc);
     }
 }

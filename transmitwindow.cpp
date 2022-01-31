@@ -174,7 +174,7 @@ void TransmitWindow::keyReleaseEvent(QKeyEvent *event) {
 
 void TransmitWindow::keyPressEvent(QKeyEvent *event) {
     const static char valid_keys[] = {'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U',\
-                                      'V','W','X','Y','Z','1','2','3','4','5','6','7','8','9','0',';','?','.',' ','=','+','%','*','<','>',','};
+                                      'V','W','X','Y','Z','1','2','3','4','5','6','7','8','9','0',';','?','.',' ','=','+','%','*','<','>',',','/'};
 
     static int key_loop = 0;
     int i;
@@ -199,21 +199,6 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
         emit startTx(false);
 
         // Set Rig to RX immediately here
-    }
-
-    if ( key == Qt::Key_Slash ) {
-        qDebug() << "SLASH" << "key_loop" << key_loop << "position" << cursor.position() << "anchor" << cursor.anchor();
-        cursor.setPosition(4, QTextCursor::MoveAnchor);
-        qDebug() << "Anchor now at" << cursor.anchor();
-        b = cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, 5);
-        qDebug() << "Position now at" << cursor.position();
-        if ( b == false ) {
-            qDebug() << "KeyEvent(): cursor.movePosition() failed1:" << "cursor anchor" << cursor.anchor();
-            return;
-        }
-        cursor.setCharFormat(f);
-        key_loop++;
-        return;
     }
 
     if ( key == Qt::Key_BracketLeft ) {

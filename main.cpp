@@ -3,9 +3,12 @@
 #include <QApplication>
 #include <QFile>
 #include <QStringList>
+#include <QMessageBox>
 
 int main(int argc, char *argv[])
 {
+    bool need_reset = false;
+
     QStringList strList = QStandardPaths::standardLocations(QStandardPaths::HomeLocation);
     QFile f;
     int rc;
@@ -25,7 +28,8 @@ int main(int argc, char *argv[])
     qDebug() << "main(): file name" << f.fileName();
     if ( f.exists() ) {
         qDebug() << "main(): Another instance of this program is already running - exiting";
-        return 19;
+        need_reset = true;
+        // return 19;
     }
 
     if ( !f.open(QIODevice::WriteOnly) ) {
@@ -35,8 +39,23 @@ int main(int argc, char *argv[])
 
     QApplication a(argc, argv);
     QApplication::setApplicationDisplayName("Mac Remote Rig");
+
+    if ( need_reset ) {
+        // Put up a  message if possible
+        QString reset_msg = "Another Instance of this program has been detected!  Another instance may be running, \
+                or the prior instance crashed. Reset?";
+        // QMessageBox::QMessageBox(QMessageBox::Icon icon, const QString &title, const QString &text, QMessageBox::StandardButtons buttons = NoButton, QWidget *parent = nullptr, Qt::WindowFlags f = Qt::Dialog | Qt::MSWindowsFixedSizeDialogHint)
+        QMessageBox mbox = QMessageBox(QMessageBox::Question, "Application Already Running?", reset_msg, QMessageBox::Abort|QMessageBox::Reset);
+        mbox.setDefaultButton(QMessageBox::Reset);
+        int std_button = mbox.exec();
+        if ( std_button == QMessageBox::Abort) {
+            return -4;  // Bail out
+        }
+    }
+
     MainWindow w;
     w.show();
+
     rc = a.exec();
     qDebug() << "main(): exiting via a.exec()";
 
