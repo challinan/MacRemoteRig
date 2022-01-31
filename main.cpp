@@ -25,11 +25,9 @@ int main(int argc, char *argv[])
 
 
     f.setFileName(strList.at(0) + QString("/.macrr/.running"));
-    qDebug() << "main(): file name" << f.fileName();
     if ( f.exists() ) {
         qDebug() << "main(): Another instance of this program is already running - exiting";
         need_reset = true;
-        // return 19;
     }
 
     if ( !f.open(QIODevice::WriteOnly) ) {
@@ -43,8 +41,8 @@ int main(int argc, char *argv[])
     if ( need_reset ) {
         // Put up a  message if possible
         QString reset_msg = "Another Instance of this program has been detected!  Another instance may be running, \
-                or the prior instance crashed. Reset?";
-        // QMessageBox::QMessageBox(QMessageBox::Icon icon, const QString &title, const QString &text, QMessageBox::StandardButtons buttons = NoButton, QWidget *parent = nullptr, Qt::WindowFlags f = Qt::Dialog | Qt::MSWindowsFixedSizeDialogHint)
+                             or the prior instance crashed. Reset?";
+
         QMessageBox mbox = QMessageBox(QMessageBox::Question, "Application Already Running?", reset_msg, QMessageBox::Abort|QMessageBox::Reset);
         mbox.setDefaultButton(QMessageBox::Reset);
         int std_button = mbox.exec();
@@ -54,8 +52,16 @@ int main(int argc, char *argv[])
     }
 
     MainWindow w;
-    w.show();
+    if ( w.failed() ) {        //Check results
+        QString fmsg = w.failedReason();
+        fmsg.prepend("MacRemoteRig failed initialization:\n\n");
+        QMessageBox failBox = QMessageBox(QMessageBox::Critical, "Startup Failed", fmsg, QMessageBox::Abort);
+        qDebug() << "main(): MainWindow constructor failed" << w.failed();
+        failBox.exec();
+        return 14;
+    }
 
+    w.show();
     rc = a.exec();
     qDebug() << "main(): exiting via a.exec()";
 

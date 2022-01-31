@@ -47,6 +47,10 @@ public:
     explicit TransmitWindow(QMainWindow *parent = nullptr, HamlibConnector *p = nullptr);
     ~TransmitWindow();
     // TransmitWindow(Ui::MainWindow *p);
+    void abortTxNow();
+
+private:
+    void txReset();
 
 public slots:
     void processTextChanged();
@@ -97,9 +101,13 @@ public:
     CBuffer *cbuf_p;
 
 private:
+    int calculate_delay(char c);
+
+private:
     bool transmitNow;
     bool paused;
     TransmitWindow *txwinObj_p;
+    int dit_timing_factor;
 
 public slots:
     void startStopTX(bool start);

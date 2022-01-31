@@ -622,6 +622,29 @@
      </rect>
     </property>
    </widget>
+   <widget class="QLineEdit" name="callSignLineEdit">
+    <property name="geometry">
+     <rect>
+      <x>325</x>
+      <y>233</y>
+      <width>113</width>
+      <height>21</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="callSignLabel">
+    <property name="geometry">
+     <rect>
+      <x>326</x>
+      <y>215</y>
+      <width>111</width>
+      <height>16</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Call Sign</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>

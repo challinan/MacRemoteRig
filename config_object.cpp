@@ -46,7 +46,7 @@ ConfigObject::~ConfigObject() {
 }
 
 void ConfigObject::open_config_dialog() {
-    qDebug() << "open_config_dialog entered - this pointer = "<< this;
+    qDebug() << "ConfigObject::open_config_dialog(): open_config_dialog entered";
     pDialog = new ConfigDialog();
     pDialog->set_conf_obj_pointer(static_cast<QObject *>(this));
 
@@ -155,8 +155,10 @@ QString ConfigObject::get_value_from_key(QString &key) {
     return configMap.value(key);
 }
 
-/** This is configdialog.cpp
- *
+/*
+ *****************************************************
+ **************** Class ConfigDialog *****************
+ *****************************************************
  */
 
 ConfigDialog::ConfigDialog(QWidget *parent) :

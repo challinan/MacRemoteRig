@@ -7,8 +7,8 @@
 HamlibConnector::HamlibConnector(QObject *parent)
     : QObject{parent}
 {
-    // verbose = RIG_DEBUG_NONE;
-        verbose = RIG_DEBUG_TRACE;
+    verbose = RIG_DEBUG_NONE;
+    // verbose = RIG_DEBUG_TRACE;
 
 #if 0
     // Figure out how we're configured - ie what rig and device
@@ -33,6 +33,7 @@ HamlibConnector::HamlibConnector(QObject *parent)
     if (retcode != RIG_OK) {
         qDebug() << "HamlibConnector::HamlibConnector(): rig_open: error = " << rigerror(retcode) << rig_file << strerror(errno) << "\n";
         // Can't quit here - main loop isn't yet running.  All we can do is report the failure.
+        goto bailout;
     }
 
     retcode = rig_get_vfo(my_rig, &current_vfo);
@@ -52,6 +53,8 @@ HamlibConnector::HamlibConnector(QObject *parent)
     get_rig_mode_and_bw();
     mrr_getRigFrequency(RIG_VFO_A);
     mrr_getRigFrequency(RIG_VFO_B);
+bailout:
+    return;
 }
 
 freq_t HamlibConnector::mrr_getRigFrequency(vfo_t vfo) {
@@ -273,7 +276,7 @@ int HamlibConnector::txCW_Char(char c) {
     char c_tmp = c;
     int rc;
 
-    qDebug() << "HamlibConnector::txCW_Char(): Entered with " << c;;
+    // qDebug() << "HamlibConnector::txCW_Char(): Entered with " << c;;
     rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_CWTX, c_tmp);
     return rc;
 }
@@ -300,7 +303,7 @@ int HamlibConnector::getCwSpeed() {
         qDebug() << "HamlibConnector::getCwSpeed(): failed" << rigerror(rc);
         return -1;
     }
-    qDebug() << "HamlibConnector::getCwSpeed(): returned" << val.i;
+    // qDebug() << "HamlibConnector::getCwSpeed(): returned" << val.i;
     cw_speed = val.i;
     return val.i;
 }

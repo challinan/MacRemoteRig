@@ -9,12 +9,22 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent) , ui(new Ui::MainWindow)
 {
+    init_failed = false;
+    freq_t fA, fB;
+    int speed;
+    QFont myFont("Arial", 18, QFont::Bold);
+    QString str_tmp;
+
+    gstreamerListener_p = nullptr;
+    scene_p = nullptr;
+    hamlib_p = nullptr;
+    pTxWindow = nullptr;
+
     // parent comes into this constructor as null
     ui->setupUi(this);
     this->setWindowTitle("Mac Remote Rig");
-    qDebug() << "MainWindow::MainWindow(): constructor entered: this =" << this;
 
-#ifdef SKIP_CONFIG_INIT
+#ifndef SKIP_CONFIG_INIT
     // Initialize our config database
     configobj_p = new ConfigObject;
     configobj_p->debug_display_map();
@@ -24,12 +34,18 @@ MainWindow::MainWindow(QWidget *parent)
     // HamlibConnector hamlibc;
 #ifndef SKIP_RIG_INIT
     hamlib_p = new HamlibConnector;
+    qDebug() << "MainWindow::MainWindow() constructor: hamlib init returned" << hamlib_p->get_retcode();
+    if ( hamlib_p->get_retcode() != RIG_OK ) {
+        qDebug() << "MainWindow::MainWindow(): hamlib failed to init - exiting";
+        init_failed = true;
+        init_failure_code = hamlib_p->get_retcode();
+        goto startupFailed;
+    }
     hamlib_p->store_ui_pointer(ui);
-    qDebug() << " MainWindow::MainWindow() constructor: hamlib init returned" << hamlib_p->get_retcode();
 
     /* Update our Main (VFO_A) display window with the current VFO_A freq */
-    freq_t fA = hamlib_p->mrr_getRigFrequency(RIG_VFO_A);
-    QString str_tmp = HamlibConnector::get_display_frequency(fA);
+    fA = hamlib_p->mrr_getRigFrequency(RIG_VFO_A);
+    str_tmp = HamlibConnector::get_display_frequency(fA);
 
     /* Initialize the freq window */
     ui->freqDisplay->setDigitCount(8);
@@ -37,7 +53,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->freqDisplay->display(str_tmp);
 
     /* Update our VFO_B display window with the current VFO_B freq */
-    freq_t fB = hamlib_p->mrr_getRigFrequency(RIG_VFO_B);
+    fB = hamlib_p->mrr_getRigFrequency(RIG_VFO_B);
     str_tmp.clear();
     str_tmp = HamlibConnector::get_display_frequency(fB);
 
@@ -60,7 +76,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Initialize the radio label
     qDebug() << "Initialize Radio label";
-    QFont myFont( "Arial", 18, QFont::Bold);
+    // myFont initialized at start of constructor
+    // myFont = ("Arial", 18, QFont::Bold);
     ui->radioLabel->setFont(myFont);
     ui->radioLabel->setText("Elecraft K3");
 
@@ -76,7 +93,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Get the initial CW Speed value
 #ifndef SKIP_RIG_INIT
-    int speed = hamlib_p->getCwSpeed();
+    speed = hamlib_p->getCwSpeed();
     if ( speed != -1 )
         ui->cwSpeedValueLabel->setText(QString().setNum(speed));
 
@@ -94,8 +111,8 @@ MainWindow::MainWindow(QWidget *parent)
 #endif
 
     // Setup transmit window
-    pTxEdit = new TransmitWindow(this, hamlib_p);
-    pTxEdit->setHamlibPointer(hamlib_p);
+    pTxWindow = new TransmitWindow(this, hamlib_p);
+    pTxWindow->setHamlibPointer(hamlib_p);
 #ifndef SKIP_RIG_INIT
 
     // Connect Signals & Slots
@@ -103,18 +120,31 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::bwidth_change, hamlib_p, &HamlibConnector::bwidth_change_request);
     connect(this, &MainWindow::refresh_rig_mode_bw, hamlib_p, &HamlibConnector::get_rig_mode_and_bw);
 #endif
+
+startupFailed:
+    return;
 }
 
 MainWindow::~MainWindow()
 {
+    qDebug() << "MainWindow::~MainWindow(): Destructor entered";
 #ifndef SKIP_RIG_INIT
-    gstreamerListener_p->terminate();
-    gstreamerListener_p->wait();
-    delete gstreamerListener_p;
-    delete scene_p;
-    delete hamlib_p;
+    if ( gstreamerListener_p ) {
+        gstreamerListener_p->terminate();
+        gstreamerListener_p->wait();
+        delete gstreamerListener_p;
+    }
+
+    if ( scene_p )
+        delete scene_p;
+
+    if ( hamlib_p )
+        delete hamlib_p;
+
+    if ( pTxWindow )
+        delete pTxWindow;
+
     delete ui;
-    delete pTxEdit;
 #endif
 }
 
@@ -545,6 +575,7 @@ void MainWindow::update_width_slider(int w) {
 void MainWindow::on_abortTXpbutton_clicked()
 {
     hamlib_p->abortTX();
+    pTxWindow->abortTxNow();
 }
 
 void MainWindow::on_pauseTXpbutton_toggled(bool checked)
@@ -595,7 +626,11 @@ void MainWindow::on_txtest_pbutton_clicked()
 
     // Now retrieve the value from the rig
     hamlib_p->mrr_get_ic_config(ic_bits);
-    if ( ic_bits[0] & K3_ICON_TXTEST )  ui->txTestLabel->setText("TXTEST"); else ui->txTestLabel->setText("TXNORM");
+    if ( ic_bits[0] & K3_ICON_TXTEST )  {
+        ui->txTestLabel->setText("TXTEST");
+    } else {
+        ui->txTestLabel->setText("TXNORM");
+    }
 }
 
 
@@ -607,3 +642,28 @@ void MainWindow::on_band_comboBox_activated(int band)
     initialize_front_panel();
 }
 
+void MainWindow::on_callSignLineEdit_returnPressed()
+{
+
+    QString callStr = ui->callSignLineEdit->text();
+    qDebug() << "MainWindow::on_callSignLineEdit_returnPressed(): text = " << callStr;
+    QString str = "Call Sign: " + callStr;
+    ui->callSignLabel->setText(str);
+}
+
+void MainWindow::on_callSignLineEdit_textEdited(const QString &arg1)
+{
+    ui->callSignLineEdit->setText(arg1.toUpper());
+}
+
+bool MainWindow::failed() {
+    return init_failed;
+}
+
+QString MainWindow::failedReason() {
+
+    if ( init_failure_code == -5 ) {
+        return QString("Comms timed out");
+    }
+    return QString("Unknown failure");
+}

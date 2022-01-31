@@ -2,3 +2,8 @@
 2) Configure Radio from application
 3) Configure connection method from application
 4) Set immediate RX after ESC - see transmitwindow.cpp:194
+5) Add CQ macro button
+6) Fix mode update on A>B
+7) Add RIT support
+8) Add NB support
+

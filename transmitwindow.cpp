@@ -157,8 +157,9 @@ void TransmitWindow::keyReleaseEvent(QKeyEvent *event) {
             bufferSem.release();
             if ( rc == false ) {
                 qDebug() << "TransmitWindow::keyReleaseEvent(): could not remove end of buffer on backspace";
-                QApplication::exit(8);
+                QApplication::beep();
             }
+
             int i = toPlainText().size();
             if ( i > 0 ) {
                 setText(toPlainText().left(i));
@@ -173,11 +174,11 @@ void TransmitWindow::keyReleaseEvent(QKeyEvent *event) {
 }
 
 void TransmitWindow::keyPressEvent(QKeyEvent *event) {
-    const static char valid_keys[] = {'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U',\
-                                      'V','W','X','Y','Z','1','2','3','4','5','6','7','8','9','0',';','?','.',' ','=','+','%','*','<','>',',','/'};
+    // const static char valid_keys[] = {'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U',\
+     //                                 'V','W','X','Y','Z','1','2','3','4','5','6','7','8','9','0',';','?','.',' ','=','+','%','*','<','>',',','/'};
 
     static int key_loop = 0;
-    int i;
+    int i, a_size;
     char c;
     int key = event->key();
     bool b;
@@ -185,20 +186,10 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
     CBuffer &bf = ccbuf;
 
     if ( key == Qt::Key_Escape) {
-        clear();
-        tpos.position = 0;      // clear() sets block back to its initial value of 1
-        tpos.block = 1;
-        last_size = 0;
-        tx_position = 0;
-        key_count = 0;
-        debug_count = 0;
-        bufferSem.acquire();
-        bf.clear();      // Clear our circular buffer
-        bufferSem.release();
-        key_loop = 0;
-        emit startTx(false);
-
         // Set Rig to RX immediately here
+        txReset();
+        emit startTx(false);
+        goto eventDone;
     }
 
     if ( key == Qt::Key_BracketLeft ) {
@@ -245,14 +236,17 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
     }
 
     c = (char) key;
-    for (i=0; i< (int)sizeof(valid_keys); i++) {
-        if ( c == valid_keys[i]) {
+    a_size = sizeof(valid_keys_timing) / sizeof(valid_keys_timing[0]);
+    for (i=0; i< a_size; i++) {
+        if ( c == valid_keys_timing[i].letter) {
             break;
         }
     }
 
-    if (i == sizeof(valid_keys) ) return;       // No valid key found
+    if (i == a_size) return;       // No valid key found
 
+    // OK, we have a character we're interested in
+    c = toupper(c);
     bufferSem.acquire();
     b = bf.put(&c);
     bufferSem.release();
@@ -310,7 +304,7 @@ void TransmitWindow::markCharAsSent(char c) {
     }
     cursor.setCharFormat(f);
     highlightTextSem.release();
-    qDebug() << "TransmitWindow::mackCharAsSent(): debug count =" << debug_count << "tx_position =" << tx_position;
+    // qDebug() << "TransmitWindow::mackCharAsSent(): debug count =" << debug_count << "tx_position =" << tx_position;
 #endif
 }
 
@@ -337,6 +331,27 @@ void TransmitWindow::setHamlibPointer(HamlibConnector *p) {
     hamlib_p = p;
 }
 
+void TransmitWindow::abortTxNow() {
+    txReset();
+    emit startTx(false);
+}
+
+void TransmitWindow::txReset() {
+
+    CBuffer &bf = ccbuf;
+
+    clear();
+    tpos.position = 0;      // clear() sets block back to its initial value of 1
+    tpos.block = 1;
+    last_size = 0;
+    tx_position = 0;
+    key_count = 0;
+    debug_count = 0;
+    bufferSem.acquire();
+    bf.clear();      // Clear our circular buffer
+    bufferSem.release();
+}
+
 // ***********************************************************************
 // *********************   QThread Class *********************************
 // ***********************************************************************
@@ -345,12 +360,15 @@ CWTX_Thread::CWTX_Thread(TransmitWindow *p) {
     transmitNow = false;
     txwinObj_p = p;
     paused = false;
+    dit_timing_factor = 1200L / txwinObj_p->hamlib_p->getCwSpeed();
+    qDebug() << "CWTX_Thread::CWTX_Thread(): dit_timing_factor =" << dit_timing_factor;
 }
 
 void CWTX_Thread::run() {
 
     char c;
     CBuffer &b = *cbuf_p;
+    int ms_delay;
 
     while ( true ) {
         if ( transmitNow && !paused ) {
@@ -366,14 +384,17 @@ void CWTX_Thread::run() {
             }
             // qDebug() << QDateTime::currentMSecsSinceEpoch() << "CWTX_Thread::run(): deQueueing char" << c;
             emit deQueueChar(c);
-#ifdef SKIP_RIG_INIT
-            QThread::msleep(50);
-#endif
+
+            // Delay for a reasonable period of time to allow edit corrections in type ahead buffer
+            // See the hamlibconnector.h header file for more info
+            ms_delay = calculate_delay(c);
+            QThread::msleep(ms_delay);
+
 #ifndef SKIP_RIG_INIT
             emit txChar(c);
 #endif
         }
-        QThread::msleep(10);
+        QThread::msleep(20);
     }
 }
 
@@ -389,4 +410,26 @@ void CWTX_Thread::pauseTx(bool pause) {
 
     qDebug() << "CWTX_Thread::pauseTx(): pause =" << pause;
     paused = pause;
+}
+
+int CWTX_Thread::calculate_delay(char c) {
+
+    int a_size = sizeof(valid_keys_timing) / sizeof(valid_keys_timing[0]);
+    int ms_delay = 0, i;
+
+    for ( i=0; i<a_size; i++) {
+        if ( c == valid_keys_timing[i].letter) {
+            break;
+        }
+    }
+
+    if ( i == a_size) {
+        // Character not found
+        qDebug() << "CWTX_Thread::run(): char not found" << c;
+        QApplication::exit(12);
+    } else {
+        ms_delay = valid_keys_timing[i].duration * dit_timing_factor;
+        qDebug() << "CWTX_Thread::run(): ms_delay =" << ms_delay;
+    }
+    return ms_delay;
 }

@@ -65,6 +65,8 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
     HamlibConnector *getHamlibPointer();
+    bool failed();
+    QString failedReason();
 
 public slots:
     void on_quit_pbutton_clicked();
@@ -120,8 +122,9 @@ private slots:
     void on_dnCwSpeedpButton_clicked();
     void on_upCwSpeedpButton_clicked();
     void on_txtest_pbutton_clicked();
-
     void on_band_comboBox_activated(int index);
+    void on_callSignLineEdit_returnPressed();
+    void on_callSignLineEdit_textEdited(const QString &arg1);
 
 private:
     void nudgeFrequency(int direction);
@@ -145,8 +148,10 @@ private:
     int nudge_delay;
     GstreamerListener *gstreamerListener_p;
     QGraphicsScene *scene_p;
-    TransmitWindow *pTxEdit;
+    TransmitWindow *pTxWindow;
     char ic_bits[5];
+    bool init_failed;
+    int init_failure_code;
 
     // For Debug
     QTimer *bw_timer;
