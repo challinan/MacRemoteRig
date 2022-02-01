@@ -23,7 +23,7 @@
 // For debug only
 #include <QLineEdit>
 
-// #define SKIP_RIG_INIT
+#define SKIP_RIG_INIT
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -194,6 +194,7 @@ signals:
     void bwidth_change(int bw);
     void refresh_rig_mode_bw();
     void update_bw_slider();
+    void updateCwSpeedSig(int speed);
 
 };
 #endif // MAINWINDOW_H

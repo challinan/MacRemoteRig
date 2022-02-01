@@ -130,6 +130,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(this, &MainWindow::refresh_rig_mode_bw, hamlib_p, &HamlibConnector::get_rig_mode_and_bw);
     connect(hamlib_p, &HamlibConnector::updateXFIL_sig, this, &MainWindow::updateXFIL_display);
     connect(hamlib_p, &HamlibConnector::spotDone, this, &MainWindow::uncheckSpotButton);
+    connect(this, &MainWindow::updateCwSpeedSig, pTxWindow, &TransmitWindow::updateRigCwSpeedSlot);
 #endif
 
 startupFailed:
@@ -609,6 +610,7 @@ void MainWindow::on_upCwSpeedpButton_clicked()
     if ( s == -1 )
         return;
     ui->cwSpeedValueLabel->setText(QString().setNum(s));
+    emit updateCwSpeedSig(s);
 }
 
 void MainWindow::on_dnCwSpeedpButton_clicked()

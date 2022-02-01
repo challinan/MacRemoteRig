@@ -98,7 +98,8 @@ TransmitWindow::TransmitWindow(QMainWindow *parent, HamlibConnector *phamlib)
     is_transmitting = false;
     key_count = 0;
     // For debug only
-    debug_count = 0;
+    key_release_count = 0;
+    cw_speed = 22;  // Set a default speed value
 
     // Initialize circular buffer
     ccbuf.clear();
@@ -113,7 +114,7 @@ TransmitWindow::TransmitWindow(QMainWindow *parent, HamlibConnector *phamlib)
     // Connect signals
     connect(this, &QTextEdit::textChanged, this, &TransmitWindow::processTextChanged);
     // connect(this, &QTextEdit::blockCountChanged, this, &TransmitWindow::updateBlockCount);
-    connect(this, &QTextEdit::cursorPositionChanged, this, &TransmitWindow::CursorPositionChangedSlot);
+    // connect(this, &QTextEdit::cursorPositionChanged, this, &TransmitWindow::CursorPositionChangedSlot);
 #ifndef SKIP_RIG_INIT
     qDebug() << "TransmitWindow::TransmitWindow(): ******************* hamlib_p =" << hamlib_p;
     connect(hamlib_p, &HamlibConnector::pauseTxSig, tx_thread_p, &CWTX_Thread::pauseTx);
@@ -138,11 +139,11 @@ void TransmitWindow::keyReleaseEvent(QKeyEvent *event) {
 
     CBuffer &bf = ccbuf;
 
-    if ( event->key() == Qt::Key_Backslash ) {
-        return;   // backslash key
+    if ( event->key() == Qt::Key_Backslash || event->key() == Qt::Key_Return) {
+        return;   // backslash and Enter key
     }
 
-    debug_count++;
+    key_release_count++;
     highlightTextSem.acquire();
     moveCursor(QTextCursor::End, QTextCursor::MoveAnchor);
     setCurrentCharFormat(norm);
@@ -174,8 +175,6 @@ void TransmitWindow::keyReleaseEvent(QKeyEvent *event) {
 }
 
 void TransmitWindow::keyPressEvent(QKeyEvent *event) {
-    // const static char valid_keys[] = {'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U',\
-     //                                 'V','W','X','Y','Z','1','2','3','4','5','6','7','8','9','0',';','?','.',' ','=','+','%','*','<','>',',','/'};
 
     static int key_loop = 0;
     int i, a_size;
@@ -222,7 +221,7 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
     }
 
     if ( key == Qt::Key_Backslash ) {
-        qDebug() << R"(\\\\\)" << "text window size" << toPlainText().size() << "debug count" << debug_count << "tx_position" << tx_position;
+        qDebug() << R"(\\\\\)" << "text window size" << toPlainText().size() << "key release count" << key_release_count << "tx_position" << tx_position << "deQueue count" << tx_thread_p->deQueue_count;
         return;
     }
 
@@ -231,11 +230,14 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
         goto eventDone;
     }
 
-    if ( key == Qt::Key_Return || key == Qt::Key_Shift ) {
+    if ( key == Qt::Key_Shift ) {
         goto eventDone;
     }
 
     c = (char) key;
+    // We're allowing the Enter key (\n) to be pseudo-transmitted to keep tx_position in sync
+    if ( key == Qt::Key_Return )  c = '\n';
+
     a_size = sizeof(valid_keys_timing) / sizeof(valid_keys_timing[0]);
     for (i=0; i< a_size; i++) {
         if ( c == valid_keys_timing[i].letter) {
@@ -271,6 +273,11 @@ eventDone:
 void TransmitWindow::processTextChanged() {
 
     int s = toPlainText().size();
+    if ( s < 1 ) return;    // text window is empty
+    if ( toPlainText().at(s-1) == QChar('\n')) {
+        // Discard Enter key
+        return;
+    }
     // qDebug() << "TransmitWindow::processTextChanged(): size =" << s << "last_size" << last_size;
     if ( s > last_size ) {
         last_size = s;
@@ -304,7 +311,7 @@ void TransmitWindow::markCharAsSent(char c) {
     }
     cursor.setCharFormat(f);
     highlightTextSem.release();
-    // qDebug() << "TransmitWindow::mackCharAsSent(): debug count =" << debug_count << "tx_position =" << tx_position;
+    // qDebug() << "TransmitWindow::mackCharAsSent(): debug count =" << key_release_count << "tx_position =" << tx_position;
 #endif
 }
 
@@ -346,10 +353,22 @@ void TransmitWindow::txReset() {
     last_size = 0;
     tx_position = 0;
     key_count = 0;
-    debug_count = 0;
+    key_release_count = 0;
     bufferSem.acquire();
     bf.clear();      // Clear our circular buffer
     bufferSem.release();
+    // For debug only
+    tx_thread_p->deQueue_count = 0;
+}
+
+int TransmitWindow::getCwSpeed() {
+
+    return cw_speed;
+}
+
+void TransmitWindow::updateRigCwSpeedSlot(int speed) {
+
+    cw_speed = speed;
 }
 
 // ***********************************************************************
@@ -360,7 +379,9 @@ CWTX_Thread::CWTX_Thread(TransmitWindow *p) {
     transmitNow = false;
     txwinObj_p = p;
     paused = false;
-    dit_timing_factor = (1200L / txwinObj_p->hamlib_p->getCwSpeed()) * 2 / 3;
+    // For debug only
+    deQueue_count = 0;
+    dit_timing_factor = (1200L / txwinObj_p->getCwSpeed()) * 2 / 3;
     qDebug() << "CWTX_Thread::CWTX_Thread(): dit_timing_factor =" << dit_timing_factor;
 }
 
@@ -379,20 +400,24 @@ void CWTX_Thread::run() {
             if ( c == -1 ) {
                 // Buffer is empty
                 transmitNow = false;
-                qDebug() << "WTX_Thread::run(): buffer empty";
+                qDebug() << "CWTX_Thread::run(): buffer empty";
                 continue;  // Is this what we want to do here?
             }
             // qDebug() << QDateTime::currentMSecsSinceEpoch() << "CWTX_Thread::run(): deQueueing char" << c;
             emit deQueueChar(c);
+            deQueue_count++;
 
+            if ( c == '\n' ) {
+                qDebug() << "CWTX::run(): discarding Enter key";
+                continue;
+            }
+#ifndef SKIP_RIG_INIT
+            emit txChar(c);
+#endif
             // Delay for a reasonable period of time to allow edit corrections in type ahead buffer
             // See the hamlibconnector.h header file for more info
             ms_delay = calculate_delay(c);
             QThread::msleep(ms_delay);
-
-#ifndef SKIP_RIG_INIT
-            emit txChar(c);
-#endif
         }
         QThread::msleep(20);
     }
@@ -408,6 +433,7 @@ void CWTX_Thread::startStopTX(bool start) {
 
 void CWTX_Thread::pauseTx(bool pause) {
 
+    // Pause is a front panel button to pause tx while you type ahead without sending
     qDebug() << "CWTX_Thread::pauseTx(): pause =" << pause;
     paused = pause;
 }
@@ -429,7 +455,7 @@ int CWTX_Thread::calculate_delay(char c) {
         QApplication::exit(12);
     } else {
         ms_delay = valid_keys_timing[i].duration * dit_timing_factor;
-        qDebug() << "CWTX_Thread::run(): ms_delay =" << ms_delay;
+        // qDebug() << "CWTX_Thread::run(): ms_delay =" << ms_delay;
     }
     return ms_delay;
 }

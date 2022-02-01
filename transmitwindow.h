@@ -48,6 +48,7 @@ public:
     ~TransmitWindow();
     // TransmitWindow(Ui::MainWindow *p);
     void abortTxNow();
+    int getCwSpeed();
 
 private:
     void txReset();
@@ -59,6 +60,7 @@ public slots:
     void txCharTransmitComplete(char c);
     void CursorPositionChangedSlot();
     void setHamlibPointer(HamlibConnector *p);
+    void updateRigCwSpeedSlot(int speed);
 
 protected:
      void keyPressEvent(QKeyEvent *event) override;
@@ -81,8 +83,9 @@ private:
      CWTX_Thread *tx_thread_p;
      CBuffer ccbuf;
      HamlibConnector *hamlib_p;
+     int cw_speed;
      // For debug only
-     int debug_count;
+     int key_release_count;
 
 signals:
      void startTx(bool start);
@@ -99,6 +102,8 @@ public:
     CWTX_Thread(TransmitWindow *p);
     void run() override;
     CBuffer *cbuf_p;
+    // For debug only
+    int deQueue_count;
 
 private:
     int calculate_delay(char c);

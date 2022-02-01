@@ -72,7 +72,8 @@ const static morse_table_t valid_keys_timing[] = {
 {'%', 14},    // ._...  Prosign AS
 {'*', 18},    // ..._._  Prosign SK
 {',', 22},    // __..__
-{'/', 16}     // _.._.
+{'/', 16},    // _.._.
+{'\n', 0}     // Enter key - need to treat it as valid and counted to keep tx_position in sync
 };
 
 
