@@ -10,6 +10,7 @@
 #include <QList>
 #include <QTimer>
 #include <QThread>
+#include <QLCDNumber>
 #include "hamlibconnector.h"
 #include "frequencypoller.h"
 #include "config_object.h"
@@ -54,6 +55,32 @@ static const band_index_t band_index[] = {
     {10, "6"}
 };
 
+typedef struct {
+    int error_code;
+    char const *error_string;
+} rig_error_strings_t;
+
+const rig_error_strings_t rig_error_strings[] = {
+   {RIG_OK,         "No error, operation completed successfully"},
+   {RIG_EINVAL,     "invalid parameter"},
+   {RIG_ECONF,      "invalid configuration (serial,..)"},
+   {RIG_ENOMEM,     "memory shortage"},
+   {RIG_ENIMPL,     "function not implemented, but will be"},
+   {RIG_ETIMEOUT,   "communication timed out"},
+   {RIG_EIO,        "IO error, including open failed"},
+   {RIG_EINTERNAL,  "Internal Hamlib error, huh!"},
+   {RIG_EPROTO,     "Protocol error"},
+   {RIG_ERJCTED,    "Command rejected by the rig"},
+   {RIG_ETRUNC,     "Command performed, but arg truncated"},
+   {RIG_ENAVAIL,    "Function not available"},
+   {RIG_ENTARGET,   "VFO not targetable"},
+   {RIG_BUSERROR,   "Error talking on the bus"},
+   {RIG_BUSBUSY,    "Collision on the bus"},
+   {RIG_EARG,       "NULL RIG handle or any invalid pointer parameter in get arg"},
+   {RIG_EVFO,       "Invalid VFO"},
+   {RIG_EDOM,       "Argument out of domain of func"}
+};
+
 class TransmitWindow;
 class TuneDialog;
 
@@ -91,6 +118,8 @@ public slots:
     void nudge_timer_action();
     void initialize_front_panel();
     void getConfigIconBits();
+    void updateXFIL_display();
+    void uncheckSpotButton();
 
 protected:
      void keyPressEvent(QKeyEvent *event) override;
@@ -114,7 +143,7 @@ private slots:
     void on_centerShift_pButton_clicked();
     void on_downshift_pButton_clicked();
     void on_upwidth_pButton_clicked();
-    void on_centerWidth_pButton_clicked();
+    void on_normWidth_pButton_clicked();
     void on_downwidth_pButton_clicked();
     void update_width_slider(int w = 0);
     void on_abortTXpbutton_clicked();
@@ -125,6 +154,10 @@ private slots:
     void on_band_comboBox_activated(int index);
     void on_callSignLineEdit_returnPressed();
     void on_callSignLineEdit_textEdited(const QString &arg1);
+    void on_monLevelSpinBox_valueChanged(int arg1);
+    void on_widthDial_valueChanged(int value);
+    void on_powerOff_pushButton_clicked();
+
 
 private:
     void nudgeFrequency(int direction);

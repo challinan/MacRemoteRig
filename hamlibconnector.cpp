@@ -161,7 +161,8 @@ int HamlibConnector::get_retcode(void) {
 }
 
 void HamlibConnector::setSpot(void) {
-    if ( lockout_spot ) { return; }
+
+    if ( lockout_spot ) return;
 
     int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_SPOT, 1);
     if ( rc != RIG_OK ) {
@@ -180,6 +181,7 @@ void HamlibConnector::cleanupSpotDelay() {
     spotDelayWorker_p = nullptr;
     autoupdate_frequency();
     lockout_spot = false;
+    emit spotDone();
 }
 
 void HamlibConnector::setSwapAB() {
@@ -221,7 +223,7 @@ pbwidth_t HamlibConnector::mrr_get_width() {
     return current_pbwidth;
 }
 
-int HamlibConnector::bwidth_change_request(int bw){
+int HamlibConnector::bwidthChangeRequest(int bw){
 
     int rc;
 
@@ -380,4 +382,41 @@ void HamlibConnector::mrr_a_2_b() {
     if ( rc != RIG_OK ) {
         qDebug() << "HamlibConnector::mrr_a_2_b(): failed" << rigerror(rc);
     }
+}
+
+int HamlibConnector::mrrGetMonLevel() {
+
+    value_t val;
+    int rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_MONITOR_GAIN, &val);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrrGetMonLevel(): failed" << rigerror(rc);
+    }
+    qDebug() << "HamlibConnector::mrrGetMonLevel(): monitor level:" << val.f;
+    return (int) (val.f * 60.0f);
+}
+
+int HamlibConnector::mrrSetMonLevel(int level) {
+
+    value_t val;
+    val.f = (float) (level / 60.0f);
+
+    int rc = rig_set_level(my_rig, current_vfo, RIG_LEVEL_MONITOR_GAIN, val);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrrGetMonLevel(): failed" << rigerror(rc);
+    }
+    return rc;
+}
+
+void HamlibConnector::mrrSetXFIL() {
+
+    int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_XFIL, 0);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrrGetMonLevel(): failed" << rigerror(rc);
+    }
+    emit updateXFIL_sig();
+}
+
+void HamlibConnector::powerOFF() {
+
+    rig_set_powerstat(my_rig, RIG_POWER_OFF);
 }

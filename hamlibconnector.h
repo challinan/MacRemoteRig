@@ -6,7 +6,6 @@
 #include "hamlib/rig.h"
 #include <iostream>
 #include <iomanip>
-#include "ui_mainwindow.h"
 #include "spot_delayworker.h"
 
 QT_BEGIN_NAMESPACE
@@ -110,9 +109,13 @@ public:
     void mrr_set_band(int band);
     int mrr_get_band();
     void mrr_a_2_b();
+    int mrrGetMonLevel();
+    int mrrSetMonLevel(int level);
+    void mrrSetXFIL();
+    void powerOFF();
 
 public slots:
-    int bwidth_change_request(int up_or_down);
+    int bwidthChangeRequest(int up_or_down);
     void mrrSetTune(bool on);
     float read_rig_swr();
     void mrrSetRx();
@@ -157,6 +160,8 @@ public slots:
 signals:
     void updateWidthSlider(pbwidth_t w);
     void pauseTxSig(bool pause);
+    void updateXFIL_sig();
+    void spotDone();
 
 };
 

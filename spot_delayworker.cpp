@@ -8,6 +8,6 @@ SpotDelayWorker::SpotDelayWorker(QObject *parent)
 
 void SpotDelayWorker::run() {
     qDebug() << "SpotDelayWorker::run(): entered";
-    QThread::msleep(2000);
+    QThread::msleep(3000);
     emit spotDelayExpired();
 }

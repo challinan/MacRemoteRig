@@ -70,7 +70,7 @@ TransmitWindow::TransmitWindow(QMainWindow *parent, HamlibConnector *phamlib)
 {
 
     hamlib_p = phamlib;
-    setGeometry(QRect(325, 260, 600, 100));
+    setGeometry(QRect(325, 260, 625, 100));
     show();
     qDebug() << "TransmitWindow::TransmitWindow(): this object:" << this;
     setPlaceholderText("Transmit here");
@@ -360,7 +360,7 @@ CWTX_Thread::CWTX_Thread(TransmitWindow *p) {
     transmitNow = false;
     txwinObj_p = p;
     paused = false;
-    dit_timing_factor = 1200L / txwinObj_p->hamlib_p->getCwSpeed();
+    dit_timing_factor = (1200L / txwinObj_p->hamlib_p->getCwSpeed()) * 2 / 3;
     qDebug() << "CWTX_Thread::CWTX_Thread(): dit_timing_factor =" << dit_timing_factor;
 }
 

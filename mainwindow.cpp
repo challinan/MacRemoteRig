@@ -1,5 +1,5 @@
-#include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "mainwindow.h"
 #include "hamlibconnector.h"
 #include "genericdialog.h"
 #include "gstreamerlistener.h"
@@ -22,7 +22,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     // parent comes into this constructor as null
     ui->setupUi(this);
-    this->setWindowTitle("Mac Remote Rig");
+    setWindowTitle("Mac Remote Rig");
+    qDebug() << "MainWindow::MainWindow(): autoFillBackground is " << autoFillBackground();
+    setAutoFillBackground(true);
+    // setStyleSheet("background-color: gray;");
 
 #ifndef SKIP_CONFIG_INIT
     // Initialize our config database
@@ -90,6 +93,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->fast_pButton->setCheckable(1);
     ui->pauseTXpbutton->setCheckable(1);
     ui->txtest_pbutton->setCheckable(1);
+    ui->spot_pbutton->setCheckable(1);
 
     // Get the initial CW Speed value
 #ifndef SKIP_RIG_INIT
@@ -104,6 +108,11 @@ MainWindow::MainWindow(QWidget *parent)
         ui->band_comboBox->insertItem(band_index[i].index, band_index[i].band);
     }
     initialize_front_panel();
+    ui->monLevelSpinBox->setMinimum(0);
+    ui->monLevelSpinBox->setMaximum(60);
+    ui->monLevelSpinBox->setValue( hamlib_p->mrrGetMonLevel() );
+    ui->widthDial->setNotchesVisible(true);
+    ui->widthDial->setWrapping(false);
 
     // Start the listener thread for audio
     gstreamerListener_p = new GstreamerListener();
@@ -117,8 +126,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Connect Signals & Slots
     connect(hamlib_p, &HamlibConnector::updateWidthSlider, this, &MainWindow::update_width_slider);
-    connect(this, &MainWindow::bwidth_change, hamlib_p, &HamlibConnector::bwidth_change_request);
+    connect(this, &MainWindow::bwidth_change, hamlib_p, &HamlibConnector::bwidthChangeRequest);
     connect(this, &MainWindow::refresh_rig_mode_bw, hamlib_p, &HamlibConnector::get_rig_mode_and_bw);
+    connect(hamlib_p, &HamlibConnector::updateXFIL_sig, this, &MainWindow::updateXFIL_display);
+    connect(hamlib_p, &HamlibConnector::spotDone, this, &MainWindow::uncheckSpotButton);
 #endif
 
 startupFailed:
@@ -127,7 +138,6 @@ startupFailed:
 
 MainWindow::~MainWindow()
 {
-    qDebug() << "MainWindow::~MainWindow(): Destructor entered";
 #ifndef SKIP_RIG_INIT
     if ( gstreamerListener_p ) {
         gstreamerListener_p->terminate();
@@ -291,7 +301,13 @@ void MainWindow::on_spot_pbutton_clicked()
 
 void MainWindow::on_xfil_pbutton_clicked()
 {
-    qDebug() << "on_xfil_pbutton_clicked() not implemented";
+    hamlib_p->mrrSetXFIL(); // Cycles through values
+    hamlib_p->get_rig_mode_and_bw();
+
+    // Setup width control
+    pbwidth_t w = hamlib_p->mrr_get_width();
+    update_width_slider(w);
+    // qDebug() << "on_xfil_pbutton_clicked(): bw now" << w;
 }
 
 void MainWindow::on_config_pbutton_clicked() {
@@ -310,6 +326,7 @@ void MainWindow::on_uptune_pButton_pressed() {
 }
 
 void MainWindow::nudge_uptimer_fired() {
+
     if ( ui->uptune_pButton->isDown() ) {
         if ( nudge_delay == INITIAL_NUDGE_DELAY ) nudge_delay = AUTONUDGE_DELAY;
         // qDebug() << "Up Button still pressed";
@@ -477,7 +494,7 @@ void MainWindow::on_upwidth_pButton_clicked()
 }
 
 
-void MainWindow::on_centerWidth_pButton_clicked()
+void MainWindow::on_normWidth_pButton_clicked()
 {
     mode_t m = hamlib_p->mrr_get_mode();
     pbwidth_t bw;
@@ -497,7 +514,7 @@ void MainWindow::on_centerWidth_pButton_clicked()
         bw = 5000;
         break;
     default:
-        qDebug() << "MainWindow::on_centerWidth_pButton_clicked(): invalid rig mode" << m;
+        qDebug() << "MainWindow::on_normWidth_pButton_clicked(): invalid rig mode" << m;
         bw = 1200;
         break;
     }
@@ -662,8 +679,85 @@ bool MainWindow::failed() {
 
 QString MainWindow::failedReason() {
 
-    if ( init_failure_code == -5 ) {
-        return QString("Comms timed out");
+    switch (init_failure_code) {
+    case RIG_OK:
+        return QString(rig_error_strings[RIG_OK].error_string);
+    case -RIG_EINVAL:
+        return QString(rig_error_strings[RIG_EINVAL].error_string);
+    case -RIG_ECONF:
+        return QString(rig_error_strings[RIG_ECONF].error_string);
+    case -RIG_ENOMEM:
+        return QString(rig_error_strings[RIG_ENOMEM].error_string);
+    case -RIG_ENIMPL:
+        return QString(rig_error_strings[RIG_ENIMPL].error_string);
+    case -RIG_ETIMEOUT:
+        return QString(rig_error_strings[RIG_ETIMEOUT].error_string);
+    case -RIG_EIO:
+        return QString(rig_error_strings[RIG_EIO].error_string);
+    case -RIG_EINTERNAL:
+        return QString(rig_error_strings[RIG_EINTERNAL].error_string);
+    case -RIG_EPROTO:
+        return QString(rig_error_strings[RIG_EPROTO].error_string);
+    case -RIG_ERJCTED:
+        return QString(rig_error_strings[RIG_ERJCTED].error_string);
+    case -RIG_ETRUNC:
+        return QString(rig_error_strings[RIG_ETRUNC].error_string);
+    case -RIG_ENAVAIL:
+        return QString(rig_error_strings[RIG_ENAVAIL].error_string);
+    case -RIG_ENTARGET:
+        return QString(rig_error_strings[RIG_ENTARGET].error_string);
+    case -RIG_BUSERROR:
+        return QString(rig_error_strings[RIG_BUSERROR].error_string);
+    case -RIG_BUSBUSY:
+        return QString(rig_error_strings[RIG_BUSBUSY].error_string);
+    case -RIG_EARG:
+        return QString(rig_error_strings[RIG_EARG].error_string);
+    case -RIG_EVFO:
+        return QString(rig_error_strings[RIG_EVFO].error_string);
+    case -RIG_EDOM:
+        return QString(rig_error_strings[RIG_EDOM].error_string);
+    default:
+        return QString("Unknown failure");
     }
-    return QString("Unknown failure");
+}
+
+void MainWindow::on_monLevelSpinBox_valueChanged(int level) {
+
+    // qint64 t1 = QDateTime::currentMSecsSinceEpoch();
+    hamlib_p->mrrSetMonLevel(level);
+    // qint64 t2 = QDateTime::currentMSecsSinceEpoch();
+    // qDebug() << "MainWindow::on_monLevelSpinBox_valueChanged(): duration - " << (t2 - t1);
+}
+
+
+void MainWindow::on_widthDial_valueChanged(int value)
+{
+    qDebug() << "MainWindow::on_widthDial_valueChanged(): value =" << value;
+    // **** Down ****
+    // on_upwidth_pButton_clicked()
+    // int bw = hamlib_p->mrr_get_width() + BANDWIDTH_STEP;
+    // Validate max up range based on mode
+    // emit bwidth_change(bw);
+    // **** Down ****
+
+    // **** Up ****
+    // int bw = hamlib_p->mrr_get_width() - BANDWIDTH_STEP;
+    // Validate max down range based on mode
+    // emit bwidth_change(bw);
+    // **** Up ****
+}
+
+void MainWindow::updateXFIL_display() {
+    qDebug() << "MainWindow::updateXFIL_display(): entered";
+}
+
+void MainWindow::uncheckSpotButton() {
+
+    ui->spot_pbutton->setChecked(false);
+}
+
+
+void MainWindow::on_powerOff_pushButton_clicked()
+{
+    hamlib_p->powerOFF();
 }
