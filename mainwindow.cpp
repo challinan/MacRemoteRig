@@ -19,6 +19,7 @@ MainWindow::MainWindow(QWidget *parent)
     scene_p = nullptr;
     hamlib_p = nullptr;
     pTxWindow = nullptr;
+    ledColor = QColor(Qt::green);
 
     // parent comes into this constructor as null
     ui->setupUi(this);
@@ -137,8 +138,8 @@ startupFailed:
     return;
 }
 
-MainWindow::~MainWindow()
-{
+MainWindow::~MainWindow() {
+
 #ifndef SKIP_RIG_INIT
     if ( gstreamerListener_p ) {
         gstreamerListener_p->terminate();
@@ -157,6 +158,24 @@ MainWindow::~MainWindow()
 
     delete ui;
 #endif
+}
+
+void MainWindow::paintEvent(QPaintEvent *event)
+{
+    Q_UNUSED(event);
+    QPainter painter(this);
+    painter.setBrush(QBrush(ledColor));
+    painter.drawEllipse(1025,16,15,15);
+}
+
+void MainWindow::drawLED(int x, int y)
+{
+    QGraphicsPixmapItem *item;
+    QPainter painter(this);
+     painter.drawArc(x,y,150,50,0,16*360);
+    // item = new QGraphicsPixmapItem(QPixmap::fromImage(this));
+    // this->addItem(item);
+
 }
 
 void MainWindow::keyPressEvent(QKeyEvent *event) {
@@ -758,8 +777,10 @@ void MainWindow::uncheckSpotButton() {
     ui->spot_pbutton->setChecked(false);
 }
 
-
-void MainWindow::on_powerOff_pushButton_clicked()
-{
+void MainWindow::on_powerOff_pushButton_clicked() {
+    static bool power_toggle = true;
     hamlib_p->powerOFF();
+    power_toggle = power_toggle ? false : true;
+    ledColor = power_toggle ? QColor(Qt::green) : QColor(Qt::red);
+    update();   // Schedule a repaint
 }

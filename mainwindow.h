@@ -123,6 +123,7 @@ public slots:
 
 protected:
      void keyPressEvent(QKeyEvent *event) override;
+     void paintEvent(QPaintEvent *event) override;
 
 private slots:
      void on_uptune_pButton_pressed();
@@ -162,6 +163,7 @@ private slots:
 private:
     void nudgeFrequency(int direction);
     void worker_thread();
+    void drawLED(int x, int y);
 
 private:
     Ui::MainWindow *ui;
@@ -185,6 +187,7 @@ private:
     char ic_bits[5];
     bool init_failed;
     int init_failure_code;
+    QColor ledColor;
 
     // For Debug
     QTimer *bw_timer;

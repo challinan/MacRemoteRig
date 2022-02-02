@@ -27,7 +27,7 @@ typedef struct {
 //         11   3  5  3  7  3  3   3  5   7  = 50
 //   PARIS  .__.    ._    ._.    ..    ...
 
-const static morse_table_t valid_keys_timing[] = {
+constexpr static morse_table_t valid_keys_timing[] = {
 {'A', 8},     // ._  1 dit, 1 intercharacter, 3 dah, 3 after char (inter char spacing)
 {'B', 12},    // _...
 {'C', 14},    //_._.
