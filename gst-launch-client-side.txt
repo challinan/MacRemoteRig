@@ -5,3 +5,6 @@ gst-launch-1.0 udpsrc port=5000 \!\
 rtpL16depay \!\
 audioconvert \!\
 osxaudiosink sync=false
+
+# This is the current command as of commit a1ba157a52699ca92173f2cc35f60885c9a47365 Feb 7
+udpsrc port=5000 ! application/x-rtp,media=\(string\)audio, clock-rate=\(int\)44100, width=16, height=16, encoding-name=\(string\)L16, encoding-params=\(string\)1, channels=\(int\)1, channel-positions=\(int\)1, payload=\(int\)96 ! rtpjitterbuffer mode=synced ! rtpL16depay ! audioconvert ! osxaudiosink sync=true
