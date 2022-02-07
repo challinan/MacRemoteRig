@@ -23,7 +23,7 @@
 // For debug only
 #include <QLineEdit>
 
-#define SKIP_RIG_INIT
+// #define SKIP_RIG_INIT
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -127,43 +127,43 @@ protected:
 
 private slots:
      void on_uptune_pButton_pressed();
-    void on_downtune_pButton_pressed();
-    void on_uptune_pButton_released();
-    void on_downtune_pButton_released();
-    void on_uptune_pButton_clicked();
-    void on_downtune_pButton_clicked();
-    void nudge_uptimer_fired();
-    void nudge_downtimer_fired();
-    void on_fast_pButton_toggled(bool checked);
-    void on_manual_pButton_clicked();
-    void on_band_pbutton_clicked();
-    void on_mode_pbutton_clicked();
-    void on_power_pbutton_clicked();
-    void on_tune_pbutton_clicked();
-    void on_upshift_pButton_clicked();
-    void on_centerShift_pButton_clicked();
-    void on_downshift_pButton_clicked();
-    void on_upwidth_pButton_clicked();
-    void on_normWidth_pButton_clicked();
-    void on_downwidth_pButton_clicked();
-    void update_width_slider(int w = 0);
-    void on_abortTXpbutton_clicked();
-    void on_pauseTXpbutton_toggled(bool b);
-    void on_dnCwSpeedpButton_clicked();
-    void on_upCwSpeedpButton_clicked();
-    void on_txtest_pbutton_clicked();
-    void on_band_comboBox_activated(int index);
-    void on_callSignLineEdit_returnPressed();
-    void on_callSignLineEdit_textEdited(const QString &arg1);
-    void on_monLevelSpinBox_valueChanged(int arg1);
-    void on_widthDial_valueChanged(int value);
-    void on_powerOff_pushButton_clicked();
-
+     void on_downtune_pButton_pressed();
+     void on_uptune_pButton_released();
+     void on_downtune_pButton_released();
+     void on_uptune_pButton_clicked();
+     void on_downtune_pButton_clicked();
+     void nudge_uptimer_fired();
+     void nudge_downtimer_fired();
+     void on_fast_pButton_toggled(bool checked);
+     void on_manual_pButton_clicked();
+     void on_band_pbutton_clicked();
+     void on_mode_pbutton_clicked();
+     void on_power_pbutton_clicked();
+     void on_tune_pbutton_clicked();
+     void on_upshift_pButton_clicked();
+     void on_centerShift_pButton_clicked();
+     void on_downshift_pButton_clicked();
+     void on_upwidth_pButton_clicked();
+     void on_centerWidth_pButton_clicked();
+     void on_downwidth_pButton_clicked();
+     void update_width_slider(int w = 0);
+     void on_abortTXpbutton_clicked();
+     void on_pauseTXpbutton_toggled(bool b);
+     void on_dnCwSpeedpButton_clicked();
+     void on_upCwSpeedpButton_clicked();
+     void on_txtest_pbutton_clicked();
+     void on_band_comboBox_activated(int index);
+     void on_callSignLineEdit_returnPressed();
+     void on_callSignLineEdit_textEdited(const QString &arg1);
+     void on_monLevelSpinBox_valueChanged(int arg1);
+     void on_widthDial_valueChanged(int value);
+     void on_powerOff_pushButton_clicked();
 
 private:
     void nudgeFrequency(int direction);
     void worker_thread();
     void drawLED(int x, int y);
+    void mwInitialize();
 
 private:
     Ui::MainWindow *ui;

@@ -7,8 +7,20 @@
 HamlibConnector::HamlibConnector(QObject *parent)
     : QObject{parent}
 {
+    // For debug only
+
     verbose = RIG_DEBUG_NONE;
     // verbose = RIG_DEBUG_TRACE;
+
+    lockout_spot = false;
+    spotDelayWorker_p = nullptr;
+    current_vfo = RIG_VFO_A;
+    current_mode = RIG_MODE_NONE;
+    current_pbwidth = 0;
+    modeStr_p = nullptr;
+    current_freq_a = 0e0;
+    current_freq_b = 0e0;
+    init_succeeded = false;
 
 #if 0
     // Figure out how we're configured - ie what rig and device
@@ -21,14 +33,13 @@ HamlibConnector::HamlibConnector(QObject *parent)
     my_rig = rig_init(my_model);
     if (!my_rig) {
         qDebug() << "Unknown rig num " << my_model << "or initialization error\n";
-        QApplication::exit();
+        QApplication::exit(16);
     }
-    qDebug() << "Rig init called, my_rig = " << my_rig;
 
     strncpy(my_rig->state.rigport.pathname, rig_file, 511);
-    qDebug() << "rig_file = " << my_rig->state.rigport.pathname;
+    // qDebug() << "rig_file = " << my_rig->state.rigport.pathname;
 
-
+    // rig_open will take 75 seconds if the server end is not listening
     retcode = rig_open(my_rig);
     if (retcode != RIG_OK) {
         qDebug() << "HamlibConnector::HamlibConnector(): rig_open: error = " << rigerror(retcode) << rig_file << strerror(errno) << "\n";
@@ -40,19 +51,12 @@ HamlibConnector::HamlibConnector(QObject *parent)
     qDebug() << "HamlibConnector::HamlibConnector(): rig_get_vfo returned" << current_vfo;
     strength = -54;     // Initialize S-Meter to effectively zero
 
-    lockout_spot = false;
-    spotDelayWorker_p = nullptr;
-    current_vfo = RIG_VFO_A;
-    current_mode = RIG_MODE_NONE;
-    current_pbwidth = 0;
-    modeStr_p = nullptr;
-    current_freq_a = 0e0;
-    current_freq_b = 0e0;
-
     // Initialize rig mode, etc
     get_rig_mode_and_bw();
     mrr_getRigFrequency(RIG_VFO_A);
     mrr_getRigFrequency(RIG_VFO_B);
+    init_succeeded = true;
+
 bailout:
     return;
 }
@@ -90,16 +94,39 @@ void HamlibConnector::store_ui_pointer(Ui::MainWindow *p) {
 
 void HamlibConnector::autoupdate_smeter() {
     // qDebug("HamlibConnector::autoupdate_smeter() called");
+    // Create a moving average
+    static int moving_avg_length = 5;
+    static QList<int> s_readings;
+    int avg = 0, i;
+
+    // Read the rig's S meter value
     int s = read_rig_strength();
-    int t = get_SMeter_progbar_value(s);
+    s_readings.append(s);
+
+    if ( s_readings.size() > moving_avg_length ) {
+        // Can't really do the moving average with less than enough readings
+        avg = 0;
+        for ( i=0; i<5; i++) {
+            avg += s_readings.at(i);
+        }
+        s_readings.removeFirst();
+        avg = avg / 5;
+    }
+
+    int t = get_SMeter_progbar_value(avg);
     ui_pointer->smeterProgressBar->setValue(t);
+
+    // Get the text equivalent of the s-meter value
+    ui_pointer->smeterLabel->setText(sMeter_cal[t].s);
 }
 
 int HamlibConnector::get_SMeter_progbar_value(int x) {
 
     // Get value appropriate for our S-Meter progress bar, from the raw S-Meter data from the rig
-    for (int i = 0; i < sMeter_cal.size() - 1; ++i) {
-        if ( x >= sMeter_cal.at(i) && x < sMeter_cal.at(i+1) ) {
+    for (int i = 0; i < (int) sizeof(sMeter_cal) / (int) (sizeof(sMeter_cal[0]) - 1); ++i) {
+        if ( x >= sMeter_cal[i].raw && x < sMeter_cal[i+1].raw ) {
+            // qDebug() << "HamlibConnector::get_SMeter_progbar_value(): sMeter_cal[].raw" << sMeter_cal[i].raw;
+            strength = i;
             return (strength = i);
         }
     }

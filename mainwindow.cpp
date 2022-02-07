@@ -10,10 +10,6 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent) , ui(new Ui::MainWindow)
 {
     init_failed = false;
-    freq_t fA, fB;
-    int speed;
-    QFont myFont("Arial", 18, QFont::Bold);
-    QString str_tmp;
 
     gstreamerListener_p = nullptr;
     scene_p = nullptr;
@@ -24,8 +20,6 @@ MainWindow::MainWindow(QWidget *parent)
     // parent comes into this constructor as null
     ui->setupUi(this);
     setWindowTitle("Mac Remote Rig");
-    qDebug() << "MainWindow::MainWindow(): autoFillBackground is " << autoFillBackground();
-    setAutoFillBackground(true);
     // setStyleSheet("background-color: gray;");
 
 #ifndef SKIP_CONFIG_INIT
@@ -34,15 +28,50 @@ MainWindow::MainWindow(QWidget *parent)
     configobj_p->debug_display_map();
 #endif
 
+    // Bulk of the initialization happens here
+    mwInitialize();
+
+    return;
+}
+
+MainWindow::~MainWindow() {
+
+#ifndef SKIP_RIG_INIT
+    if ( gstreamerListener_p ) {
+        gstreamerListener_p->terminate();
+        gstreamerListener_p->wait();
+        delete gstreamerListener_p;
+    }
+
+    if ( scene_p )
+        delete scene_p;
+
+    if ( hamlib_p )
+        delete hamlib_p;
+
+    if ( pTxWindow )
+        delete pTxWindow;
+
+    delete ui;
+#endif
+}
+
+void MainWindow::mwInitialize() {
+
+    QFont myFont("Arial", 18, QFont::Bold);
+    freq_t fA, fB;
+    int speed;
+    QString str_tmp;
+
     /* Initialize the rig */
     // HamlibConnector hamlibc;
 #ifndef SKIP_RIG_INIT
     hamlib_p = new HamlibConnector;
     qDebug() << "MainWindow::MainWindow() constructor: hamlib init returned" << hamlib_p->get_retcode();
     if ( hamlib_p->get_retcode() != RIG_OK ) {
-        qDebug() << "MainWindow::MainWindow(): hamlib failed to init - exiting";
         init_failed = true;
         init_failure_code = hamlib_p->get_retcode();
+        qDebug() << "MainWindow::MainWindow(): hamlib failed to init: retcode" << init_failure_code;
         goto startupFailed;
     }
     hamlib_p->store_ui_pointer(ui);
@@ -114,6 +143,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->monLevelSpinBox->setValue( hamlib_p->mrrGetMonLevel() );
     ui->widthDial->setNotchesVisible(true);
     ui->widthDial->setWrapping(false);
+    ui->smeterLabel->setText("0");
 
     // Start the listener thread for audio
     gstreamerListener_p = new GstreamerListener();
@@ -138,28 +168,6 @@ startupFailed:
     return;
 }
 
-MainWindow::~MainWindow() {
-
-#ifndef SKIP_RIG_INIT
-    if ( gstreamerListener_p ) {
-        gstreamerListener_p->terminate();
-        gstreamerListener_p->wait();
-        delete gstreamerListener_p;
-    }
-
-    if ( scene_p )
-        delete scene_p;
-
-    if ( hamlib_p )
-        delete hamlib_p;
-
-    if ( pTxWindow )
-        delete pTxWindow;
-
-    delete ui;
-#endif
-}
-
 void MainWindow::paintEvent(QPaintEvent *event)
 {
     Q_UNUSED(event);
@@ -170,7 +178,6 @@ void MainWindow::paintEvent(QPaintEvent *event)
 
 void MainWindow::drawLED(int x, int y)
 {
-    QGraphicsPixmapItem *item;
     QPainter painter(this);
      painter.drawArc(x,y,150,50,0,16*360);
     // item = new QGraphicsPixmapItem(QPixmap::fromImage(this));
@@ -514,10 +521,11 @@ void MainWindow::on_upwidth_pButton_clicked()
 }
 
 
-void MainWindow::on_normWidth_pButton_clicked()
+void MainWindow::on_centerWidth_pButton_clicked()
 {
     mode_t m = hamlib_p->mrr_get_mode();
     pbwidth_t bw;
+
     switch( m ) {
     case RIG_MODE_CW:
         bw = 800;
@@ -779,8 +787,11 @@ void MainWindow::uncheckSpotButton() {
 
 void MainWindow::on_powerOff_pushButton_clicked() {
     static bool power_toggle = true;
+#ifndef SKIP_RIG_INIT
     hamlib_p->powerOFF();
+#endif
     power_toggle = power_toggle ? false : true;
     ledColor = power_toggle ? QColor(Qt::green) : QColor(Qt::red);
     update();   // Schedule a repaint
 }
+

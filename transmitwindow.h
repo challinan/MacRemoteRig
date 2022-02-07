@@ -38,7 +38,6 @@ private:
     int count;
 };
 
-// class TransmitWindow : public QPlainTextEdit
 class TransmitWindow : public QTextEdit
 {
     friend class CWTX_Thread;
@@ -46,7 +45,6 @@ class TransmitWindow : public QTextEdit
 public:
     explicit TransmitWindow(QMainWindow *parent = nullptr, HamlibConnector *p = nullptr);
     ~TransmitWindow();
-    // TransmitWindow(Ui::MainWindow *p);
     void abortTxNow();
     int getCwSpeed();
 

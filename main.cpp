@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 
     f.setFileName(strList.at(0) + QString("/.macrr/.running"));
     if ( f.exists() ) {
-        qDebug() << "main(): Another instance of this program is already running - exiting";
+        qDebug() << "main(): Another instance of this program is already running or the previous instance crashed - exiting";
         need_reset = true;
     }
 
@@ -58,7 +58,7 @@ int main(int argc, char *argv[])
         QMessageBox failBox = QMessageBox(QMessageBox::Critical, "Startup Failed", fmsg, QMessageBox::Abort);
         qDebug() << "main(): MainWindow constructor failed" << w.failed();
         failBox.exec();
-        return 14;
+        return -14;
     }
 
     w.show();

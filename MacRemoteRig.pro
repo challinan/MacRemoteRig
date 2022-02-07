@@ -1,5 +1,5 @@
 # Adding statemachine For debug only
-QT       += core gui serialport statemachine
+QT       += core serialport
 
 greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
 

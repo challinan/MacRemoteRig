@@ -72,10 +72,9 @@ TransmitWindow::TransmitWindow(QMainWindow *parent, HamlibConnector *phamlib)
     hamlib_p = phamlib;
     setGeometry(QRect(325, 260, 625, 100));
     show();
-    qDebug() << "TransmitWindow::TransmitWindow(): this object:" << this;
     setPlaceholderText("Transmit here");
 
-    // Create a cursor object at the beginning of our text window
+    // Create a cursor object
     cursor = textCursor();
     setTextCursor(cursor);
     qDebug() << "TransmitWindow::TransmitWindow(): cursor now at" << cursor.position();

@@ -20,7 +20,7 @@ FrequencyPoller::FrequencyPoller(QObject *parent)
 void FrequencyPoller::poll_rig_frequency() {
     // static int i = 0;
     // qDebug() << "poll_rig_frequency() called " << i++;
-    emit freq_ready();
+    // emit freq_ready();
     emit smeter_ready();
 }
 

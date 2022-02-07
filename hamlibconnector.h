@@ -76,6 +76,7 @@ constexpr static morse_table_t valid_keys_timing[] = {
 {'\n', 0}     // Enter key - need to treat it as valid and counted to keep tx_position in sync
 };
 
+typedef struct { int raw; QString s; } s_meter_cal_t;
 
 class HamlibConnector : public QObject
 {
@@ -135,13 +136,14 @@ private:
     float frequency;
     Ui::MainWindow *ui_pointer;
     int strength;
-    const QList<int> sMeter_cal = {-54, -48, -42, -30, -24, -18, -12, -6, 0, 10, 20, 30, 40, 50, 60};
+    const s_meter_cal_t sMeter_cal[15] = { {-54, "1"}, {-48, "2"}, {-42, "3"}, {-30, "4"}, {-24, "5"}, {-18, "6"}, {-12, "7"}, {-6, "8"}, {0, "9"}, {10, "+10"}, {20, "+20"}, {30, "+30"}, {40, "+40"}, {50, "+50"}, {60, "+60"} };
     bool lockout_spot;
     SpotDelayWorker *spotDelayWorker_p;
     rmode_t current_mode;
     pbwidth_t current_pbwidth;
     const char *modeStr_p;
-    int cw_speed;    
+    int cw_speed;
+    bool init_succeeded;
 
 private:
 
