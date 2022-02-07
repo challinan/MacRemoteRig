@@ -12,7 +12,6 @@ void GstreamerListener::run() {
     GMainLoop *loop;
     // GstElement *source;
 
-
     /* Initialize GStreamer */
     gst_init (&argc, &argv);  // Ugh - this is 'C' afterall
     loop = g_main_loop_new (NULL, FALSE);
@@ -26,9 +25,17 @@ void GstreamerListener::run() {
     //        encoding-name=(string)L16, encoding-params=(string)1, channels=(int)1, channel-positions=(int)1, payload=(int)96" !
     //        rtpL16depay ! audioconvert ! osxaudiosink sync=false
 
+#ifdef WIN32
+    pipeline = gst_parse_launch("udpsrc port=5000 ! application/x-rtp,media=(string)audio, clock-rate=(int)44100, width=16, height=16,"
+                                " encoding-name=(string)L16, encoding-params=(string)1, channels=(int)1, channel-positions=(int)1, payload=(int)96 "
+                                " ! rtpjitterbuffer mode=synced ! rtpL16depay ! audioconvert ! directsoundsink sync=true", &gst_error);
+#elif __APPLE__
     pipeline = gst_parse_launch("udpsrc port=5000 ! application/x-rtp,media=(string)audio, clock-rate=(int)44100, width=16, height=16,"
                                 " encoding-name=(string)L16, encoding-params=(string)1, channels=(int)1, channel-positions=(int)1, payload=(int)96 "
                                 " ! rtpjitterbuffer mode=synced ! rtpL16depay ! audioconvert ! osxaudiosink sync=true", &gst_error);
+#elif
+#error "Platform undefined in gstreamerlistener.cpp"
+#endif
 
     qDebug() << "gst_parse_launcher() returned" << gst_error;
 

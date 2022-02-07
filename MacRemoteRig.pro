@@ -52,19 +52,18 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 # QMAKE_MACOSX_DEPLOYMENT_TARGET = "11.0"
-QMAKE_MACOSX_DEPLOYMENT_TARGET = "10.15"
+macx: QMAKE_MACOSX_DEPLOYMENT_TARGET = "10.15"
 
 # message($$PWD)
-# Support for Hamlib library
-# macx: LIBS += -L$$PWD/../../../../usr/local/lib/ -lhamlib.2
-# INCLUDEPATH += $$PWD/../../../../usr/local/include
-# DEPENDPATH += $$PWD/../../../../usr/local/include
 
 # Support for Hamlib Library in our workspace
 macx: LIBS += -L$$PWD/../../sandbox/Hamlib/install-dir-temp/lib/ -lhamlib.4
+win32: LIBS += -L$$PWD/../../sandbox/Hamlib/install-dir-temp/lib -lhamlib -lws2_32
 INCLUDEPATH += $$PWD/../../sandbox/Hamlib/install-dir-temp/include
 DEPENDPATH += $$PWD/../../sandbox/Hamlib/install-dir-temp/include
 
 # GStreamer support
 macx: LIBS += -L/Library/Frameworks/GStreamer.framework/Libraries -lgstreamer-1.0.0 -lglib-2.0.0
-INCLUDEPATH += /Library/Frameworks/GStreamer.framework/Headers
+win32: LIBS += -L$$PWD/../../../../mingw64/lib -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0 -lintl
+macx: INCLUDEPATH += /Library/Frameworks/GStreamer.framework/Headers
+win32: INCLUDEPATH += $$PWD/../../../../mingw64/include/gstreamer-1.0 $$PWD/../../../../mingw64/include/glib-2.0 $$PWD/../../../../mingw64/lib/glib-2.0/include $$PWD/../../../../mingw64/include -pthread -mms-bitfields
