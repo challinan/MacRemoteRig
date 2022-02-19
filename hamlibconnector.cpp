@@ -16,11 +16,12 @@ HamlibConnector::HamlibConnector(QObject *parent)
     spotDelayWorker_p = nullptr;
     current_vfo = RIG_VFO_A;
     current_mode = RIG_MODE_NONE;
-    current_pbwidth = 0;
+    current_pbwidth = 800;      // Good default for CW
     modeStr_p = nullptr;
-    current_freq_a = 0e0;
-    current_freq_b = 0e0;
+    cached_freq_a = 0e0;
+    cached_freq_b = 0e0;
     init_succeeded = false;
+    split_enabled = false;
 
 #if 0
     // Figure out how we're configured - ie what rig and device
@@ -70,16 +71,16 @@ freq_t HamlibConnector::mrr_getRigFrequency(vfo_t vfo) {
         QApplication::exit();
     }
     if ( vfo == RIG_VFO_A ) {
-        current_freq_a = freq;
+        cached_freq_a = freq;
         return freq;
     }
         else {
-        current_freq_b = freq;
+        cached_freq_b = freq;
         return freq;
     }
 
-    qDebug() << "Current freq (on currently selected VFO) is " << current_freq_a;
-    return -1e0;
+    qDebug() << "Current freq (on currently selected VFO) is " << cached_freq_a;
+    return 0;
 }
 
 void HamlibConnector::autoupdate_frequency() {
@@ -167,20 +168,34 @@ QString HamlibConnector::get_display_frequency(freq_t f) {
     return fd;
 }
 
-int HamlibConnector::set_rig_freq(freq_t f) {
-    return rig_set_freq(my_rig, current_vfo, f);
+int HamlibConnector::mrrSetRigFreqA(freq_t f) {
+
+    return rig_set_freq(my_rig, RIG_VFO_A, f);
+}
+
+int HamlibConnector::mrrSetRigFreqB(freq_t f) {
+
+    return rig_set_freq(my_rig, RIG_VFO_B, f);
 }
 
 vfo_t HamlibConnector::mrr_getVFO() {
     return current_vfo;
 }
 
-freq_t HamlibConnector::mrr_getCurrentFreq_A() {
-    return current_freq_a;
+freq_t HamlibConnector::mrrGetCachedFreqA() {
+    return cached_freq_a;
 }
 
-void HamlibConnector::mrr_setCurrentFreq_A(freq_t f) {
-    current_freq_a = f;
+void HamlibConnector::mrrSetCachedFreqA(freq_t f) {
+    cached_freq_a = f;
+}
+
+freq_t HamlibConnector::mrrGetCachedFreqB() {
+    return cached_freq_b;
+}
+
+void HamlibConnector::mrrSetCachedFreqB(freq_t f) {
+    cached_freq_b = f;
 }
 
 int HamlibConnector::get_retcode(void) {
@@ -219,7 +234,7 @@ void HamlibConnector::setSwapAB() {
     }
 }
 
-mode_t HamlibConnector::mrr_get_mode() {
+mode_t HamlibConnector::mrrGetMode() {
 
     return current_mode;
 }
@@ -305,7 +320,7 @@ int HamlibConnector::txCW_Char(char c) {
     char c_tmp = c;
     int rc;
 
-    // qDebug() << "HamlibConnector::txCW_Char(): Entered with " << c;;
+    // qDebug() << "HamlibConnector::txCW_Char(): Entered with " << c;
     rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_CWTX, c_tmp);
     return rc;
 }
@@ -327,7 +342,7 @@ void HamlibConnector::abortTX() {
 int HamlibConnector::getCwSpeed() {
     int rc;
     value_t val;
-    rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_CWSPEED, &val);
+    rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_KEYSPD, &val);
     if ( rc != RIG_OK ) {
         qDebug() << "HamlibConnector::getCwSpeed(): failed" << rigerror(rc);
         return -1;
@@ -351,7 +366,7 @@ int HamlibConnector::bumpCwSpeed(bool up) {
 
     qDebug() << "HamlibConnector::bumpCwSpeed(): new value is" << cw_speed;
 
-    int rc = rig_set_level(my_rig, current_vfo, RIG_LEVEL_CWSPEED, val);
+    int rc = rig_set_level(my_rig, current_vfo, RIG_LEVEL_KEYSPD, val);
     if ( rc != RIG_OK ) {
         qDebug() << "HamlibConnector::bumpCwSpeed(): failed" << rigerror(rc);
         return -1;
@@ -364,14 +379,17 @@ void HamlibConnector::setPauseTx(bool checked) {
     qDebug() << "HamlibConnector::setPauseTx(): paused =" << checked;
 }
 
-void HamlibConnector::mrr_get_ic_config(char *p) {
+void HamlibConnector::mrrGetIcConfig(unsigned char *p) {
 
+#pragma unused(p)
     value_t val;
-    val.s = p;  // Storage in mainwindow.cpp
+
     int rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_ICONSTATUS, &val);
     if ( rc != RIG_OK ) {
         qDebug() << "HamlibConnector::mrr_get_ic_config(): failed" << rigerror(rc);
     }
+    qDebug() << "HamlibConnector::mrrGetIcConfig(): exiting";
+    // strncpy( (char *)p, val.s, 5);
 }
 
 void HamlibConnector::mrr_set_tx_test() {
@@ -394,12 +412,10 @@ void HamlibConnector::mrr_set_band(int band) {
 int HamlibConnector::mrr_get_band() {
 
     int band, rc;
-    qDebug() << "HamlibConnector::mrr_get_band(): **********************************************************";
     rc = rig_get_func(my_rig, current_vfo, RIG_FUNC_BANDNUM, &band);
     if ( rc != RIG_OK ) {
         qDebug() << "HamlibConnector::mrr_get_band(): failed" << rigerror(rc);
     }
-    qDebug() << "HamlibConnector::mrr_get_band(): band =" << band;
     return band;
 }
 
@@ -429,16 +445,27 @@ int HamlibConnector::mrrSetMonLevel(int level) {
 
     int rc = rig_set_level(my_rig, current_vfo, RIG_LEVEL_MONITOR_GAIN, val);
     if ( rc != RIG_OK ) {
-        qDebug() << "HamlibConnector::mrrGetMonLevel(): failed" << rigerror(rc);
+        qDebug() << "HamlibConnector::mrrSetMonLevel(): failed" << rigerror(rc);
     }
     return rc;
+}
+
+int HamlibConnector::mrrGetXFILValue() {
+
+    value_t status;
+    int rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_XFILV, &status);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrrGetXFIL(): failed" << rigerror(rc);
+    }
+    xfil_bandwidth = status.i;
+    return status.i;
 }
 
 void HamlibConnector::mrrSetXFIL() {
 
     int rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_XFIL, 0);
     if ( rc != RIG_OK ) {
-        qDebug() << "HamlibConnector::mrrGetMonLevel(): failed" << rigerror(rc);
+        qDebug() << "HamlibConnector::mrrSetXFIL(): failed" << rigerror(rc);
     }
     emit updateXFIL_sig();
 }
@@ -446,4 +473,86 @@ void HamlibConnector::mrrSetXFIL() {
 void HamlibConnector::powerOFF() {
 
     rig_set_powerstat(my_rig, RIG_POWER_OFF);
+}
+
+const char *HamlibConnector::getRigError(int err_number) {
+
+    return rigerror(err_number);
+}
+
+const char *HamlibConnector::getXFILString(int number) {
+
+    if ( number < 1 || number > 5 ) {
+        qDebug() << "HamlibConnector::getXFILString()): Invalid filter number" << number;
+    }
+    // Array is zero based, XFIL starts at 1
+    return xtal_filter_values[number - 1].filter_bandwidth;
+}
+
+/*
+extern HAMLIB_EXPORT(int)
+rig_token_foreach HAMLIB_PARAMS((RIG *rig,
+                                 int (*cfunc)(const struct confparams *,
+                                              rig_ptr_t),
+                                 rig_ptr_t data));
+
+rig.h:2802:1: note: candidate function not viable:
+no known conversion from 'int (HamlibConnector::*)(const struct confparams *, void *)'
+to                       'int (*)(const struct confparams *, void *)' for 2nd argument
+*/
+
+int HamlibConnector::listTokensCallback(const struct confparams *cp, rig_ptr_t rp) {
+
+    qDebug() << "HamlibConnector::listTokensCallback(): confparms:";
+    qDebug() << "    token:" << cp->token;
+    qDebug() << "    name:" << cp->name;
+    qDebug() << "    label:" << cp->label;
+    qDebug() << "    type:" << get_rig_conf_type(cp->type);
+    if ( cp->type == RIG_CONF_STRING )
+        qDebug() << "    data:" << *cp->u.c.combostr;
+    qDebug() << "";
+    return 1;
+}
+
+const char *HamlibConnector::get_rig_conf_type(enum rig_conf_e type)
+{
+    switch (type)
+    {
+    case RIG_CONF_STRING:
+        return "STRING";
+
+    case RIG_CONF_COMBO:
+        return "COMBO";
+
+    case RIG_CONF_NUMERIC:
+        return "NUMERIC";
+
+    case RIG_CONF_CHECKBUTTON:
+        return "CHECKBUTTON";
+
+    case RIG_CONF_BUTTON:
+        return "BUTTON";
+
+    case RIG_CONF_BINARY:
+        return "BINARY";
+    }
+
+    return "UNKNOWN";
+}
+
+int HamlibConnector::mrrRigSetSplitVfo(bool split_on) {
+
+    int rc;
+
+    if ( split_on ) {
+        rc = rig_set_split_vfo	(my_rig, RIG_VFO_A, RIG_SPLIT_ON, RIG_VFO_B);
+    }
+    else {
+        rc = rig_set_split_vfo	(my_rig, RIG_VFO_A, RIG_SPLIT_OFF, RIG_VFO_B);
+    }
+
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrrRigSetSplitVfo(): failed" << rigerror(rc);
+    }
+    return rc;
 }

@@ -39,7 +39,6 @@ void GstreamerListener::run() {
 
     qDebug() << "gst_parse_launcher() returned" << gst_error;
 
-
     // Add a message handler
     /* we add a message handler */
     bus = gst_pipeline_get_bus ( GST_PIPELINE_CAST (pipeline));

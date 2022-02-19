@@ -14,69 +14,18 @@ QT_END_NAMESPACE
 
 #define MAXCONFLEN 1024
 #define TOKEN_FRONTEND(t) ((t)|(1<<30))
-#define BANDWIDTH_STEP 20
+#define BANDWIDTH_STEP 10
 
-typedef struct {
-    char letter;
-    int duration;   // duration in dits
-} morse_table_t;
-
-// Based upon a 50 dot duration standard word such as PARIS, the time for one dit
-//   duration or one unit can be computed by the formula:
-//   T = 1200 / Speed(wpm) where T is the dit duration.
-//         11   3  5  3  7  3  3   3  5   7  = 50
-//   PARIS  .__.    ._    ._.    ..    ...
-
-constexpr static morse_table_t valid_keys_timing[] = {
-{'A', 8},     // ._  1 dit, 1 intercharacter, 3 dah, 3 after char (inter char spacing)
-{'B', 12},    // _...
-{'C', 14},    //_._.
-{'D', 10},    // _..
-{'E', 4},     // .
-{'F', 12},    // .._.
-{'G', 12},    // __.
-{'H', 10},    // ....
-{'I', 6},     // ..
-{'J', 16},    // .___
-{'K', 12},    // _._
-{'L', 12},    // ._..
-{'M', 10},    // __
-{'N', 8},     // _.
-{'O', 14},    // ___
-{'P', 14},    // .__.
-{'Q', 16},    // __._
-{'R', 10},    // ._.
-{'S', 9},     // ...
-{'T', 6},     // _
-{'U', 10},    // .._
-{'V', 12},    // ..._
-{'W', 12},    // .__
-{'X', 14},    // .__.
-{'Y', 16},    // _.__
-{'Z', 14},    // __..
-{'1', 20},    // .____
-{'2', 18},    // ..___
-{'3', 16},    // ...__
-{'4', 14},    // ...._
-{'5', 12},    // .....
-{'6', 14},    // _....
-{'7', 16},    // __...
-{'8', 18},    // ___..
-{'9', 20},    // ____.
-{'0', 22},    // _____
-{'?', 18},    // ..__..
-{'.', 20},    // ._._._
-{' ', 7},     // space is 7 elements
-{'=', 16},    // _..._  Prosign BT
-{'+', 16},    // ._._.  Prosign AR
-{'%', 14},    // ._...  Prosign AS
-{'*', 18},    // ..._._  Prosign SK
-{',', 22},    // __..__
-{'/', 16},    // _.._.
-{'\n', 0}     // Enter key - need to treat it as valid and counted to keep tx_position in sync
-};
+#include "morse_table.h"
 
 typedef struct { int raw; QString s; } s_meter_cal_t;
+
+typedef struct {
+    int filter_number;
+    const char *filter_bandwidth;
+} xtal_filter_values_t;
+
+const static xtal_filter_values_t xtal_filter_values[5] = { {1, "13KHz"}, {2, "2.7KHz"}, {3, "1.8KHz"}, {4, "500Hz"}, {5, "250Hz"} };
 
 class HamlibConnector : public QObject
 {
@@ -84,18 +33,20 @@ class HamlibConnector : public QObject
 public:
     explicit HamlibConnector(QObject *parent = nullptr);
 
-public:
     freq_t mrr_getRigFrequency(vfo_t vfo);
     void store_ui_pointer(Ui::MainWindow *p);
     int get_SMeter_progbar_value(int x);
     int read_rig_strength();
     static QString get_display_frequency(freq_t f);
-    int set_rig_freq(freq_t f);
+    int mrrSetRigFreqA(freq_t f);
+    int mrrSetRigFreqB(freq_t f);
     vfo_t mrr_getVFO(void);
-    freq_t mrr_getCurrentFreq_A();
-    void mrr_setCurrentFreq_A(freq_t f);
+    freq_t mrrGetCachedFreqA();
+    freq_t mrrGetCachedFreqB();
+    void mrrSetCachedFreqA(freq_t f);
+    void mrrSetCachedFreqB(freq_t f);
     int get_retcode(void);
-    mode_t mrr_get_mode();
+    mode_t mrrGetMode();
     int mrr_set_mode(mode_t mode);
     int mrr_set_level(setting_t level, value_t v);
     pbwidth_t mrr_get_width();
@@ -106,7 +57,7 @@ public:
     int getCwSpeed();
     int bumpCwSpeed(bool up);
     void setPauseTx(bool checked);
-    void mrr_get_ic_config(char *p);
+    void mrrGetIcConfig(unsigned char *p);
     void mrr_set_tx_test();
     void mrr_set_band(int band);
     int mrr_get_band();
@@ -114,7 +65,11 @@ public:
     int mrrGetMonLevel();
     int mrrSetMonLevel(int level);
     void mrrSetXFIL();
+    int mrrGetXFILValue();
     void powerOFF();
+    const char *getRigError(int err_number);
+    const char *getXFILString(int number);
+    int mrrRigSetSplitVfo(bool split_on);
 
 public slots:
     int bwidthChangeRequest(int up_or_down);
@@ -131,8 +86,8 @@ private:
     int retcode;
     rig_debug_level_e verbose = RIG_DEBUG_NONE;
     vfo_t current_vfo;
-    freq_t current_freq_a;  // This is a type:double
-    freq_t current_freq_b;
+    freq_t cached_freq_a;  // This is a type:double
+    freq_t cached_freq_b;
     float frequency;
     Ui::MainWindow *ui_pointer;
     int strength;
@@ -144,15 +99,12 @@ private:
     const char *modeStr_p;
     int cw_speed;
     bool init_succeeded;
+    int xfil_bandwidth;
+    bool split_enabled;
 
 private:
-
-#if 0
-    static HamlibConnector& getInstance() {
-            static HamlibConnector instance;
-            return instance;
-    }
-#endif
+    static int listTokensCallback(const struct confparams *cp, rig_ptr_t rp);
+    static const char *get_rig_conf_type(enum rig_conf_e type);
 
 public slots:
     void autoupdate_frequency();

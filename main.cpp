@@ -26,7 +26,7 @@ int main(int argc, char *argv[])
 
     f.setFileName(strList.at(0) + QString("/.macrr/.running"));
     if ( f.exists() ) {
-        qDebug() << "main(): Another instance of this program is already running or the previous instance crashed - exiting";
+        qDebug() << "main(): Another instance of this program is already running or the previous instance crashed";
         need_reset = true;
     }
 
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
         mbox.setDefaultButton(QMessageBox::Reset);
         int std_button = mbox.exec();
         if ( std_button == QMessageBox::Abort) {
-            return -4;  // Bail out
+            return -24;  // Bail out
         }
     }
 
@@ -58,6 +58,10 @@ int main(int argc, char *argv[])
         QMessageBox failBox = QMessageBox(QMessageBox::Critical, "Startup Failed", fmsg, QMessageBox::Abort);
         qDebug() << "main(): MainWindow constructor failed" << w.failed();
         failBox.exec();
+        f.close();
+        if ( !f.remove() )
+            qDebug() << "main(): failed to remove file";
+
         return -14;
     }
 
