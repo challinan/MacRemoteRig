@@ -20,9 +20,6 @@
 #include "gstreamerlistener.h"
 #include "icon_defines.h"
 
-// For debug only
-#include <QLineEdit>
-
 // #define SKIP_RIG_INIT
 
 QT_BEGIN_NAMESPACE
@@ -32,7 +29,7 @@ QT_END_NAMESPACE
 #define F_UP 1
 #define F_DN 2
 #define INITIAL_NUDGE_DELAY 400
-#define AUTONUDGE_DELAY 50
+#define AUTONUDGE_DELAY 75
 #define INITIAL_FREQ_INCREMENT 10
 #define FAST_FREQ_INCREMENT 100
 
@@ -115,7 +112,6 @@ public slots:
     void on_config_pbutton_clicked();
     // For Debug:
     void on_editingFinished();
-    void nudge_timer_action();
     void initialize_front_panel();
     void getConfigIconBits();
     void updateXFIL_display();
@@ -158,11 +154,13 @@ private slots:
      void on_monLevelSpinBox_valueChanged(int arg1);
      void on_widthDial_valueChanged(int value);
      void on_powerOff_pushButton_clicked();
+     void on_freqB_Dial_valueChanged(int value);
+     void on_vfoB_fastTune_pButton_clicked();
+     void on_split_pButton_clicked();
 
 private:
-    void nudgeFrequency(int direction);
+    void nudgeFrequency(int direction, vfo_t vfo);
     void worker_thread();
-    void drawLED(int x, int y);
     void mwInitialize();
 
 private:
@@ -184,10 +182,11 @@ private:
     GstreamerListener *gstreamerListener_p;
     QGraphicsScene *scene_p;
     TransmitWindow *pTxWindow;
-    char ic_bits[5];
+    unsigned char ic_bits[16];
     bool init_failed;
     int init_failure_code;
     QColor ledColor;
+    bool vfoB_fast_toggle;
 
     // For Debug
     QTimer *bw_timer;

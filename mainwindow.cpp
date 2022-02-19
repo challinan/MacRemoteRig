@@ -15,6 +15,7 @@ MainWindow::MainWindow(QWidget *parent)
     scene_p = nullptr;
     hamlib_p = nullptr;
     pTxWindow = nullptr;
+    vfoB_fast_toggle = false;
     ledColor = QColor(Qt::green);
 
     // parent comes into this constructor as null
@@ -54,6 +55,7 @@ MainWindow::~MainWindow() {
 
     delete ui;
 #endif
+
 }
 
 void MainWindow::mwInitialize() {
@@ -65,13 +67,13 @@ void MainWindow::mwInitialize() {
 
     /* Initialize the rig */
     // HamlibConnector hamlibc;
-#ifndef SKIP_RIG_INIT
     hamlib_p = new HamlibConnector;
-    qDebug() << "MainWindow::MainWindow() constructor: hamlib init returned" << hamlib_p->get_retcode();
+    qDebug() << "MainWindow::mwInitialize() constructor: hamlib init returned" << hamlib_p->get_retcode();
+#ifndef SKIP_RIG_INIT
     if ( hamlib_p->get_retcode() != RIG_OK ) {
         init_failed = true;
         init_failure_code = hamlib_p->get_retcode();
-        qDebug() << "MainWindow::MainWindow(): hamlib failed to init: retcode" << init_failure_code;
+        qDebug() << "MainWindow::mwInitialize(): hamlib failed to init: retcode" << init_failure_code;
         goto startupFailed;
     }
     hamlib_p->store_ui_pointer(ui);
@@ -108,7 +110,7 @@ void MainWindow::mwInitialize() {
 #endif
 
     // Initialize the radio label
-    qDebug() << "Initialize Radio label";
+    qDebug() << "MainWindow::mwInitialize(): Initialize Radio label";
     // myFont initialized at start of constructor
     // myFont = ("Arial", 18, QFont::Bold);
     ui->radioLabel->setFont(myFont);
@@ -131,19 +133,34 @@ void MainWindow::mwInitialize() {
     if ( speed != -1 )
         ui->cwSpeedValueLabel->setText(QString().setNum(speed));
 
-    // Initialize other front panel status bits
+    // Initialize other front panel status bits, split status, modes, etc.
+    qDebug() << "MainWindow::mwInitialize(): calling getConfigIconBits()";
     getConfigIconBits();
-    qDebug() << "MainWindow::MainWindow(): sizeof band_index =" << sizeof(band_index) / sizeof(band_index[0]);
+    qDebug() << "MainWindow::mwInitialize(): sizeof band_index =" << sizeof(band_index) / sizeof(band_index[0]);
     for ( int i=0; i< (int) (sizeof(band_index) / (int) sizeof(band_index[0])); i++ ) {
         ui->band_comboBox->insertItem(band_index[i].index, band_index[i].band);
     }
+
     initialize_front_panel();
     ui->monLevelSpinBox->setMinimum(0);
     ui->monLevelSpinBox->setMaximum(60);
+
+    // FIXME: this generates the valueChanged signal and doubles the network traffic on read
     ui->monLevelSpinBox->setValue( hamlib_p->mrrGetMonLevel() );
+
     ui->widthDial->setNotchesVisible(true);
-    ui->widthDial->setWrapping(false);
+    ui->widthDial->setWrapping(true);
+    ui->widthDial->setValue(0);
+    ui->freqB_Dial->setValue(0);
+    ui->freqB_Dial->setNotchesVisible(true);
+    ui->freqB_Dial->setWrapping(true);
+    // ui->freqB_Dial->setSingleStep(10);
     ui->smeterLabel->setText("0");
+    ui->vfoB_FastLabel->setText("Norm");
+    ui->vfoA_RX_Label->setText("RX");
+    ui->vfoA_TX_Label->setText("TX");
+    ui->vfoA_TX_Label->setStyleSheet("QLabel { color : red; }");
+    ui->vfoB_TX_Label->setText("");
 
     // Start the listener thread for audio
     gstreamerListener_p = new GstreamerListener();
@@ -162,6 +179,7 @@ void MainWindow::mwInitialize() {
     connect(hamlib_p, &HamlibConnector::updateXFIL_sig, this, &MainWindow::updateXFIL_display);
     connect(hamlib_p, &HamlibConnector::spotDone, this, &MainWindow::uncheckSpotButton);
     connect(this, &MainWindow::updateCwSpeedSig, pTxWindow, &TransmitWindow::updateRigCwSpeedSlot);
+
 #endif
 
 startupFailed:
@@ -170,13 +188,15 @@ startupFailed:
 
 void MainWindow::paintEvent(QPaintEvent *event)
 {
+    // This function paints a power LED on the front panel
     Q_UNUSED(event);
     QPainter painter(this);
     painter.setBrush(QBrush(ledColor));
     painter.drawEllipse(1025,16,15,15);
 }
 
-void MainWindow::drawLED(int x, int y)
+#if 0
+void MainWindow::drawPowerLED(int x, int y)
 {
     QPainter painter(this);
      painter.drawArc(x,y,150,50,0,16*360);
@@ -184,6 +204,7 @@ void MainWindow::drawLED(int x, int y)
     // this->addItem(item);
 
 }
+#endif
 
 void MainWindow::keyPressEvent(QKeyEvent *event) {
     // qDebug() << "MainWindow::keyPressEvent(): entered - centralWidget" << centralWidget() << "key =" << event->key();
@@ -273,12 +294,14 @@ void MainWindow::on_a_b_vfo_pbutton_clicked()
 
 void MainWindow::on_afx_pbutton_clicked()
 {
-    qDebug() << "on_afx_pbutton_clicked not implemented";
+    qDebug() << "MainWindow::on_afx_pbutton_clicked not implemented";
+    // Start Remote GStreamer
 }
 
 void MainWindow::on_agc_pbutton_clicked()
 {
-
+    qDebug() << "MainWindow::on_agc_pbutton_clicked not implemented";
+    // Stop remote GStreamer
 }
 
 void MainWindow::on_bset_pbutton_clicked()
@@ -343,7 +366,7 @@ void MainWindow::on_config_pbutton_clicked() {
 
 void MainWindow::on_uptune_pButton_clicked()
 {
-    nudgeFrequency(F_UP);
+    nudgeFrequency(F_UP, RIG_VFO_A);
 }
 
 void MainWindow::on_uptune_pButton_pressed() {
@@ -358,7 +381,7 @@ void MainWindow::nudge_uptimer_fired() {
         if ( nudge_delay == INITIAL_NUDGE_DELAY ) nudge_delay = AUTONUDGE_DELAY;
         // qDebug() << "Up Button still pressed";
         if ( up_pressed ) {
-            nudgeFrequency(F_UP);
+            nudgeFrequency(F_UP, RIG_VFO_A);
             on_uptune_pButton_pressed();
         }
     }
@@ -371,7 +394,7 @@ void MainWindow::on_uptune_pButton_released() {
 
 void MainWindow::on_downtune_pButton_clicked() {
     // qDebug() << "MainWindow::on_downtune_pbutton_clicked(): entered";
-    nudgeFrequency(F_DN);
+    nudgeFrequency(F_DN, RIG_VFO_A);
 }
 
 void MainWindow::on_downtune_pButton_pressed() {
@@ -381,12 +404,15 @@ void MainWindow::on_downtune_pButton_pressed() {
 }
 
 void MainWindow::nudge_downtimer_fired() {
+    // Instead of this implementation, spawn a single thread that lives as long as pButton is pressed
+    //    We need to avoid the situation where we have multiple timer threads all trying to send freq requests to rig
+    // Do we ever reset nudge_delay back to INITIAL_NUDGE_DELAY and is that important?
     // Impelement auto-down
     if ( ui->downtune_pButton->isDown() ) {
         if ( nudge_delay == INITIAL_NUDGE_DELAY ) nudge_delay = AUTONUDGE_DELAY;
         // qDebug() << "Down Button still pressed";
         if ( down_pressed ) {
-            nudgeFrequency(F_DN);
+            nudgeFrequency(F_DN, RIG_VFO_A);
             on_downtune_pButton_pressed();
         }
     }
@@ -397,34 +423,47 @@ void MainWindow::on_downtune_pButton_released() {
     nudge_delay = INITIAL_NUDGE_DELAY;
 }
 
-void MainWindow::nudgeFrequency(int direction) {
+void MainWindow::nudgeFrequency(int direction, vfo_t vfo) {
+
     HamlibConnector &hl = *hamlib_p;
     freq_t f;
-    if ( direction == F_UP ) {
-        f = hl.mrr_getCurrentFreq_A() + mrr_frequency_increment;
-    } else {
-        f = hl.mrr_getCurrentFreq_A() - mrr_frequency_increment;
-    }
 
-    hl.mrr_setCurrentFreq_A(f);
+    if ( vfo == RIG_VFO_A) {
+        if ( direction == F_UP ) {
+            f = hl.mrrGetCachedFreqA() + mrr_frequency_increment;
+        } else {
+            f = hl.mrrGetCachedFreqA() - mrr_frequency_increment;
+        }
+
+        hl.mrrSetCachedFreqA(f);  // Stores our current cached value
     // qDebug() << "MainWindow::nudgeFrequency(): current freq is " << hl.mrr_getCurrentFreq_A();
-    int rc = hl.set_rig_freq(f);
-    if ( rc != RIG_OK ) {
-        qDebug() << "MainWindow::nudgeFreqency(): set frequency failed: " << rc;
-        QApplication::exit(4);
+        int rc = hl.mrrSetRigFreqA(f);
+        if ( rc != RIG_OK ) {
+            qDebug() << "MainWindow::nudgeFreqency(): set frequency failed: " << rc << hamlib_p->getRigError(rc);
+            QApplication::exit(rc);
+        }
+        QString str_tmp = HamlibConnector::get_display_frequency(f);
+        ui->freqDisplay->display(str_tmp);
     }
-    QString str_tmp = HamlibConnector::get_display_frequency(f);
-    ui->freqDisplay->display(str_tmp);
-}
 
-void MainWindow::nudge_timer_action() {
-    bool up = ui->uptune_pButton->isDown();
-    if ( up ) {
-        nudgeFrequency(F_UP);
+    if ( vfo == RIG_VFO_B) {
+        if ( direction == F_UP ) {
+            f = hl.mrrGetCachedFreqB() + (vfoB_fast_toggle ? FAST_FREQ_INCREMENT : INITIAL_FREQ_INCREMENT);
+        } else {
+            f = hl.mrrGetCachedFreqB() - (vfoB_fast_toggle ? FAST_FREQ_INCREMENT : INITIAL_FREQ_INCREMENT);
+        }
+
+        hl.mrrSetCachedFreqB(f);  // Stores our current cached value
+    // qDebug() << "MainWindow::nudgeFrequency(): current freq B is " << hl.mrrGetCachedFreqB();
+        int rc = hl.mrrSetRigFreqB(f);
+        if ( rc != RIG_OK ) {
+            qDebug() << "MainWindow::nudgeFreqency(): set frequency B failed: " << rc << hamlib_p->getRigError(rc);
+            QApplication::exit(rc);
+        }
+        QString str_tmp = HamlibConnector::get_display_frequency(f);
+        ui->freqBDisplay->display(str_tmp);
     }
-    else {
-        nudgeFrequency(F_DN);
-    }
+
 }
 
 void MainWindow::on_fast_pButton_toggled(bool checked)
@@ -459,7 +498,7 @@ void MainWindow::on_mode_pbutton_clicked()
         RIG_MODE_FM
     };
 
-    mode_t m = hamlib_p->mrr_get_mode();
+    mode_t m = hamlib_p->mrrGetMode();
     for ( i=1; i<sizeof(supported_modes); i++ ) {
         if ( m == supported_modes[i] ) {
             index = i;
@@ -515,15 +554,33 @@ void MainWindow::on_downshift_pButton_clicked()
 
 void MainWindow::on_upwidth_pButton_clicked()
 {
-    int bw = hamlib_p->mrr_get_width() + BANDWIDTH_STEP;
+    mode_t m = hamlib_p->mrrGetMode();
+    int current_bwidth = hamlib_p->mrr_get_width();
+    int bw_step = current_bwidth < 1000 ? BANDWIDTH_STEP - 5 : BANDWIDTH_STEP;
+    int bw = hamlib_p->mrr_get_width() + bw_step;
     // Validate max up range based on mode
+    switch( m ) {
+    case RIG_MODE_CW:
+        if ( bw > 2800 ) return;  // Ignore the request
+        break;
+    case RIG_MODE_USB:
+    case RIG_MODE_LSB:
+    case RIG_MODE_RTTY:
+    case RIG_MODE_FM:
+    case RIG_MODE_AM:
+    default:
+        qDebug() << "MainWindow::on_upwidth_pButton_clicked(): invalid rig mode" << m;
+        bw = 1200;
+        break;
+    }
+    updateXFIL_display();
     emit bwidth_change(bw);
 }
 
 
 void MainWindow::on_centerWidth_pButton_clicked()
 {
-    mode_t m = hamlib_p->mrr_get_mode();
+    mode_t m = hamlib_p->mrrGetMode();
     pbwidth_t bw;
 
     switch( m ) {
@@ -539,10 +596,10 @@ void MainWindow::on_centerWidth_pButton_clicked()
         bw = 5000;
         break;
     case RIG_MODE_AM:
-        bw = 5000;
+        bw = 13000;
         break;
     default:
-        qDebug() << "MainWindow::on_normWidth_pButton_clicked(): invalid rig mode" << m;
+        qDebug() << "MainWindow::on_centerWidth_pButton_clicked(): invalid rig mode" << m;
         bw = 1200;
         break;
     }
@@ -552,8 +609,27 @@ void MainWindow::on_centerWidth_pButton_clicked()
 
 void MainWindow::on_downwidth_pButton_clicked()
 {
-    int bw = hamlib_p->mrr_get_width() - BANDWIDTH_STEP;
+    mode_t m = hamlib_p->mrrGetMode();
+    int current_bwidth = hamlib_p->mrr_get_width();
+    int bw_step = current_bwidth < 1000 ? BANDWIDTH_STEP - 5 : BANDWIDTH_STEP;
+    int bw = hamlib_p->mrr_get_width() - bw_step;
+
     // Validate max down range based on mode
+    switch( m ) {
+    case RIG_MODE_CW:
+        if ( bw < 50 ) return;  // Ignore this request - min value
+        break;
+    case RIG_MODE_USB:
+    case RIG_MODE_LSB:
+    case RIG_MODE_RTTY:
+    case RIG_MODE_FM:
+    case RIG_MODE_AM:
+    default:
+        qDebug() << "MainWindow::on_downwidth_pButton_clicked(): invalid rig mode" << m;
+        break;
+    }
+
+    updateXFIL_display();
     emit bwidth_change(bw);
 }
 
@@ -569,23 +645,26 @@ void MainWindow::initialize_front_panel() {
     str_tmp = HamlibConnector::get_display_frequency(fB);
     ui->freqBDisplay->display(str_tmp);
 
-    mode_t mode = hamlib_p->mrr_get_mode();
+    mode_t mode = hamlib_p->mrrGetMode();
 
     // Get and display current mode
     QString modeStr = hamlib_p->mrr_getModeString(mode);
     ui->mode_pbutton->setText(modeStr);
 
-    // Setup width control
+    // Setup width control and xfil value
     pbwidth_t w = hamlib_p->mrr_get_width();
     update_width_slider(w);
 
     // Set Icons
-    getConfigIconBits();
+    // getConfigIconBits();
 
     // Check band and set band combobox
     band = hamlib_p->mrr_get_band();
-    qDebug() << "MainWindow::initialize_front_panel(): ***********************band" << band;
+    // qDebug() << "MainWindow::initialize_front_panel(): ***********************band" << band;
     ui->band_comboBox->setCurrentIndex(band);
+
+    // Set XFIL Icon
+    updateXFIL_display();
 }
 
 void MainWindow::update_width_slider(int w) {
@@ -652,7 +731,7 @@ void MainWindow::on_dnCwSpeedpButton_clicked()
 
 void MainWindow::getConfigIconBits()
 {
-    hamlib_p->mrr_get_ic_config(ic_bits);
+    hamlib_p->mrrGetIcConfig(ic_bits);
 
     if ( ic_bits[2] & K3_ICON_VOX ) ui->voxLabel->setText("VOX");
     if ( ic_bits[0] & K3_ICON_TXTEST )  {
@@ -671,7 +750,7 @@ void MainWindow::on_txtest_pbutton_clicked()
     hamlib_p->mrr_set_tx_test();
 
     // Now retrieve the value from the rig
-    hamlib_p->mrr_get_ic_config(ic_bits);
+    hamlib_p->mrrGetIcConfig(ic_bits);
     if ( ic_bits[0] & K3_ICON_TXTEST )  {
         ui->txTestLabel->setText("TXTEST");
     } else {
@@ -752,10 +831,14 @@ QString MainWindow::failedReason() {
 
 void MainWindow::on_monLevelSpinBox_valueChanged(int level) {
 
+    // Unfortunately, this signal/slot is emitted even when the value
+    // is changed via our own SetValue call.  We need to squelch the
+    // extraneous network traffic.
+
     // qint64 t1 = QDateTime::currentMSecsSinceEpoch();
     hamlib_p->mrrSetMonLevel(level);
     // qint64 t2 = QDateTime::currentMSecsSinceEpoch();
-    // qDebug() << "MainWindow::on_monLevelSpinBox_valueChanged(): duration - " << (t2 - t1);
+    qDebug() << "MainWindow::on_monLevelSpinBox_valueChanged(): level:" << level;
 }
 
 
@@ -777,7 +860,10 @@ void MainWindow::on_widthDial_valueChanged(int value)
 }
 
 void MainWindow::updateXFIL_display() {
-    qDebug() << "MainWindow::updateXFIL_display(): entered";
+
+    int f_num = hamlib_p->mrrGetXFILValue();
+    QString s = hamlib_p->getXFILString(f_num);
+    ui->xfilLabel->setText(s);
 }
 
 void MainWindow::uncheckSpotButton() {
@@ -793,5 +879,117 @@ void MainWindow::on_powerOff_pushButton_clicked() {
     power_toggle = power_toggle ? false : true;
     ledColor = power_toggle ? QColor(Qt::green) : QColor(Qt::red);
     update();   // Schedule a repaint
+}
+
+void MainWindow::on_freqB_Dial_valueChanged(int value)
+{
+    static int prev_val = 0;
+#define MRR_UP_CW true
+#define MRR_DOWN_CCW false
+    bool direction;
+
+    // qDebug() << "MainWindow::on_freqB_Dial_valueChanged:" << value;
+
+    // Detect direction of rotation.  Default values go from 0 to 99 in two directions
+    switch (value) {
+    case 0:
+        // Detect rotation direction
+        if ( prev_val > 50 && prev_val <= 99 ) {
+            direction = MRR_UP_CW;
+        }
+        else {
+            direction = MRR_DOWN_CCW;
+        }
+        break;
+    case 99:
+        // Detect rotation direction
+        if ( prev_val >= 0 && prev_val < 50 ) {
+            direction = MRR_DOWN_CCW;
+        }
+        else {
+            direction = MRR_UP_CW;
+        }
+        break;
+    default:
+        if ( value > prev_val ) {
+            direction = MRR_UP_CW;
+        }
+        else {
+            direction = MRR_DOWN_CCW;
+        }
+        break;
+    }
+
+    if ( direction == MRR_UP_CW ) {
+        nudgeFrequency(F_UP, RIG_VFO_B);
+    }
+    else {
+        // Down/CCW rotation
+        nudgeFrequency(F_DN, RIG_VFO_B);
+    }
+    QString s = direction ? "UP" : "DOWN";
+    // qDebug() << "direction:" << s << "step:" << value - prev_val << "value:" << value << "prev_val:" << prev_val;
+    prev_val = value;
+}
+
+void MainWindow::on_vfoB_fastTune_pButton_clicked()
+{
+    vfoB_fast_toggle = !vfoB_fast_toggle;
+
+    if ( vfoB_fast_toggle == true )
+        ui->vfoB_FastLabel->setText("Fast");
+    else
+        ui->vfoB_FastLabel->setText("Norm");
+}
+
+void MainWindow::on_split_pButton_clicked()
+{
+    static bool my_split = RIG_SPLIT_OFF;
+    int rc;
+    freq_t f;
+    HamlibConnector &hl = *hamlib_p;
+
+    // Toggle split mode setting
+    my_split = my_split == RIG_SPLIT_OFF ? RIG_SPLIT_ON : RIG_SPLIT_OFF;
+
+    if ( my_split == RIG_SPLIT_ON ) {
+        // First set A -> B
+        hl.mrr_a_2_b();
+
+        // Now set B to 1 KHz UP
+        f = hl.mrrGetCachedFreqA();  // Get our current cached value
+        qDebug() << "MainWindow::on_split_pButton_clicked(): current freq is " << f << "setting VFO_B to" << f+1e3;
+        rc = hl.mrrSetRigFreqB(f+1e3);
+        if ( rc != RIG_OK ) {
+            qDebug() << "MainWindow::on_split_pButton_clicked(): set frequency failed: " << rc << hl.getRigError(rc);
+            return;
+        }
+
+        // Enable split mode
+        rc = hamlib_p->mrrRigSetSplitVfo(true);
+        if ( rc != RIG_OK ) {
+            qDebug() << "MainWindow::on_split_pButton_clicked(): set split mode failed: " << rc << hl.getRigError(rc);
+            return;
+        }
+
+        // Update VFO B display
+        QString s = HamlibConnector::get_display_frequency(f);
+        ui->freqBDisplay->display(s);
+
+        // Update RX/TX Icons
+        ui->vfoB_TX_Label->setText("TX");
+        ui->vfoB_TX_Label->setStyleSheet("QLabel { color : red; }");
+        ui->vfoA_TX_Label->setStyleSheet("QLabel { color : black; }");
+        update();
+    }
+
+    if ( my_split == RIG_SPLIT_OFF ) {
+        // ui->vfoB_TX_Label->setText("");
+        ui->vfoA_TX_Label->setStyleSheet("QLabel { color : red; }");
+        ui->vfoB_TX_Label->setStyleSheet("QLabel { color : black; }");
+        rc = hamlib_p->mrrRigSetSplitVfo(false);
+    }
+
+
 }
 
