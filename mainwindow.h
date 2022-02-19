@@ -106,7 +106,6 @@ public slots:
     void on_ntch_pbutton_clicked();
     void on_pre_pbutton_clicked();
     void on_rev_vfo_pbutton_clicked();
-    void on_split_pbutton_clicked();
     void on_spot_pbutton_clicked();
     void on_xfil_pbutton_clicked();
     void on_config_pbutton_clicked();
@@ -162,6 +161,7 @@ private:
     void nudgeFrequency(int direction, vfo_t vfo);
     void worker_thread();
     void mwInitialize();
+    void processConfigIconBits();
 
 private:
     Ui::MainWindow *ui;
@@ -187,6 +187,8 @@ private:
     int init_failure_code;
     QColor ledColor;
     bool vfoB_fast_toggle;
+    bool my_split;  // Initial value should come from icon bits
+
 
     // For Debug
     QTimer *bw_timer;

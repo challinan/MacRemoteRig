@@ -9,8 +9,8 @@ HamlibConnector::HamlibConnector(QObject *parent)
 {
     // For debug only
 
-    verbose = RIG_DEBUG_NONE;
-    // verbose = RIG_DEBUG_TRACE;
+    // verbose = RIG_DEBUG_NONE;
+    verbose = RIG_DEBUG_TRACE;
 
     lockout_spot = false;
     spotDelayWorker_p = nullptr;
@@ -555,4 +555,31 @@ int HamlibConnector::mrrRigSetSplitVfo(bool split_on) {
         qDebug() << "HamlibConnector::mrrRigSetSplitVfo(): failed" << rigerror(rc);
     }
     return rc;
+}
+
+void HamlibConnector::mrrGetRigIFInfo() {
+
+    qDebug() << "HamlibConnector::mrrGetRigIFInfo(): entered";
+
+    value_t value;
+    unsigned char buff[40];
+
+    // For debug only
+    for ( int i=0; i<40; i++ )
+        buff[i] = 0;
+
+    value.s = (char *)buff;
+
+    int rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_INFO, &value);
+    if ( rc != RIG_OK ) {
+        qDebug() << "HamlibConnector::mrrGetXFIL(): failed" << rigerror(rc);
+    }
+
+    // Set the various values
+    qDebug() << "mrrGetRigIfInfo(): returned these bytes:";
+    for ( int i=0; i<38; i++ ) {
+        // qDebug() << "    " << Qt::hex <<  value.s[i];
+        fprintf(stderr, "%c ", (unsigned char) value.s[i]);
+    }
+    qDebug() << "";
 }

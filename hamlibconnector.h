@@ -70,6 +70,7 @@ public:
     const char *getRigError(int err_number);
     const char *getXFILString(int number);
     int mrrRigSetSplitVfo(bool split_on);
+    void mrrGetRigIFInfo();
 
 public slots:
     int bwidthChangeRequest(int up_or_down);

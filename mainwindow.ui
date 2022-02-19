@@ -130,7 +130,7 @@
       </widget>
      </item>
      <item row="1" column="2">
-      <widget class="QPushButton" name="split_pbutton">
+      <widget class="QPushButton" name="split_pButton">
        <property name="text">
         <string>SPLIT</string>
        </property>
@@ -655,7 +655,7 @@
      </rect>
     </property>
    </widget>
-   <widget class="QLabel" name="label">
+   <widget class="QLabel" name="monLabel">
     <property name="geometry">
      <rect>
       <x>850</x>
@@ -709,7 +709,7 @@
      <string>?</string>
     </property>
    </widget>
-   <widget class="QLabel" name="label_2">
+   <widget class="QLabel" name="sMeterLabel">
     <property name="geometry">
      <rect>
       <x>12</x>
@@ -779,19 +779,6 @@
     </property>
     <property name="text">
      <string>Fast</string>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="split_pButton">
-    <property name="geometry">
-     <rect>
-      <x>614</x>
-      <y>225</y>
-      <width>41</width>
-      <height>32</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Split</string>
     </property>
    </widget>
    <widget class="QLabel" name="vfoB_TX_Label">

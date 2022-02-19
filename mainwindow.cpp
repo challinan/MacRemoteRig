@@ -17,6 +17,7 @@ MainWindow::MainWindow(QWidget *parent)
     pTxWindow = nullptr;
     vfoB_fast_toggle = false;
     ledColor = QColor(Qt::green);
+    my_split = false;
 
     // parent comes into this constructor as null
     ui->setupUi(this);
@@ -126,6 +127,8 @@ void MainWindow::mwInitialize() {
     ui->pauseTXpbutton->setCheckable(1);
     ui->txtest_pbutton->setCheckable(1);
     ui->spot_pbutton->setCheckable(1);
+    ui->vfoB_fastTune_pButton->setCheckable(1);
+    ui->split_pButton->setCheckable(1);
 
     // Get the initial CW Speed value
 #ifndef SKIP_RIG_INIT
@@ -136,7 +139,8 @@ void MainWindow::mwInitialize() {
     // Initialize other front panel status bits, split status, modes, etc.
     qDebug() << "MainWindow::mwInitialize(): calling getConfigIconBits()";
     getConfigIconBits();
-    qDebug() << "MainWindow::mwInitialize(): sizeof band_index =" << sizeof(band_index) / sizeof(band_index[0]);
+
+    // Setup band combox box.
     for ( int i=0; i< (int) (sizeof(band_index) / (int) sizeof(band_index[0])); i++ ) {
         ui->band_comboBox->insertItem(band_index[i].index, band_index[i].band);
     }
@@ -326,7 +330,7 @@ void MainWindow::on_nr_pbutton_clicked()
 
 void MainWindow::on_ntch_pbutton_clicked()
 {
-
+    hamlib_p->mrrGetRigIFInfo();
 }
 
 void MainWindow::on_pre_pbutton_clicked()
@@ -335,11 +339,6 @@ void MainWindow::on_pre_pbutton_clicked()
 }
 
 void MainWindow::on_rev_vfo_pbutton_clicked()
-{
-
-}
-
-void MainWindow::on_split_pbutton_clicked()
 {
 
 }
@@ -733,7 +732,8 @@ void MainWindow::getConfigIconBits()
 {
     hamlib_p->mrrGetIcConfig(ic_bits);
 
-    if ( ic_bits[2] & K3_ICON_VOX ) ui->voxLabel->setText("VOX");
+    if ( ic_bits[2] & K3_ICON_VOX_ON_CW ) ui->voxLabel->setText("VOX");
+
     if ( ic_bits[0] & K3_ICON_TXTEST )  {
         ui->txTestLabel->setText("TXTEST");
         ui->txtest_pbutton->setChecked(true);
@@ -743,6 +743,9 @@ void MainWindow::getConfigIconBits()
     }
 }
 
+void MainWindow::processConfigIconBits() {
+
+}
 
 void MainWindow::on_txtest_pbutton_clicked()
 {
@@ -927,7 +930,8 @@ void MainWindow::on_freqB_Dial_valueChanged(int value)
         // Down/CCW rotation
         nudgeFrequency(F_DN, RIG_VFO_B);
     }
-    QString s = direction ? "UP" : "DOWN";
+
+    // QString s = direction ? "UP" : "DOWN";
     // qDebug() << "direction:" << s << "step:" << value - prev_val << "value:" << value << "prev_val:" << prev_val;
     prev_val = value;
 }
@@ -944,7 +948,6 @@ void MainWindow::on_vfoB_fastTune_pButton_clicked()
 
 void MainWindow::on_split_pButton_clicked()
 {
-    static bool my_split = RIG_SPLIT_OFF;
     int rc;
     freq_t f;
     HamlibConnector &hl = *hamlib_p;
