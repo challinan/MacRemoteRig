@@ -38,6 +38,7 @@ HEADERS += \
     config_object.h \
     icon_defines.h \
     mainwindow.h \
+    morse_table.h \
     spot_delayworker.h \
     transmitwindow.h \
     tune_dialog.h
