@@ -84,6 +84,7 @@ private:
      int cw_speed;
      // For debug only
      int key_release_count;
+     int key_down_count;
 
 signals:
      void startTx(bool start);

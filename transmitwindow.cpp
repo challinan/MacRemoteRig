@@ -70,7 +70,7 @@ TransmitWindow::TransmitWindow(QMainWindow *parent, HamlibConnector *phamlib)
 {
 
     hamlib_p = phamlib;
-    setGeometry(QRect(325, 260, 625, 100));
+    setGeometry(QRect(325, 280, 625, 100));
     show();
     setPlaceholderText("Transmit here");
 
@@ -98,6 +98,7 @@ TransmitWindow::TransmitWindow(QMainWindow *parent, HamlibConnector *phamlib)
     key_count = 0;
     // For debug only
     key_release_count = 0;
+    key_down_count = 0;
     cw_speed = 22;  // Set a default speed value
 
     // Initialize circular buffer
@@ -138,11 +139,12 @@ void TransmitWindow::keyReleaseEvent(QKeyEvent *event) {
 
     CBuffer &bf = ccbuf;
 
+    key_release_count++;
+
     if ( event->key() == Qt::Key_Backslash || event->key() == Qt::Key_Return) {
         return;   // backslash and Enter key
     }
 
-    key_release_count++;
     highlightTextSem.acquire();
     moveCursor(QTextCursor::End, QTextCursor::MoveAnchor);
     setCurrentCharFormat(norm);
@@ -155,6 +157,7 @@ void TransmitWindow::keyReleaseEvent(QKeyEvent *event) {
             bufferSem.acquire();
             bool rc = bf.deleteLast();
             bufferSem.release();
+            tx_position = tx_position == 0 ? 0 : tx_position--;
             if ( rc == false ) {
                 qDebug() << "TransmitWindow::keyReleaseEvent(): could not remove end of buffer on backspace";
                 QApplication::beep();
@@ -182,6 +185,8 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
     bool b;
 
     CBuffer &bf = ccbuf;
+
+    key_down_count++;
 
     if ( key == Qt::Key_Escape) {
         // Set Rig to RX immediately here
@@ -220,7 +225,8 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
     }
 
     if ( key == Qt::Key_Backslash ) {
-        qDebug() << R"(\\\\\)" << "text window size" << toPlainText().size() << "key release count" << key_release_count << "tx_position" << tx_position << "deQueue count" << tx_thread_p->deQueue_count;
+        qDebug() << R"(\\\\\)" << "text window size" << toPlainText().size() << "tx_position" << tx_position << "deQueue count" << tx_thread_p->deQueue_count;
+        qDebug() << "key_down_count" << key_down_count << "key_release_count" << key_release_count;
         return;
     }
 
@@ -304,7 +310,7 @@ void TransmitWindow::markCharAsSent(char c) {
     cursor.setPosition(0, QTextCursor::MoveAnchor);
     bool b = cursor.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, tx_position);
     if ( b == false ) {
-        qDebug() << "TransmitWindow::markCharAsSent(): cursor.movePosition() failed5:" << "cursor anchor" << cursor.anchor();
+        qDebug() << "cursor.movePosition() failed5:" << "cursor anchor" << cursor.anchor() << "tx_position:" << tx_position << "text window size" << toPlainText().size();
         highlightTextSem.release();
         return;
     }
@@ -380,7 +386,7 @@ CWTX_Thread::CWTX_Thread(TransmitWindow *p) {
     paused = false;
     // For debug only
     deQueue_count = 0;
-    dit_timing_factor = (1200L / txwinObj_p->getCwSpeed()) * 2 / 3;
+    dit_timing_factor = (1200L / txwinObj_p->getCwSpeed()) * 4 / 5;     // We need to be slightly faster than the rig
     qDebug() << "CWTX_Thread::CWTX_Thread(): dit_timing_factor =" << dit_timing_factor;
 }
 
@@ -412,6 +418,8 @@ void CWTX_Thread::run() {
             }
 #ifndef SKIP_RIG_INIT
             emit txChar(c);
+#else
+            qDebug() << "***" << c;
 #endif
             // Delay for a reasonable period of time to allow edit corrections in type ahead buffer
             // See the hamlibconnector.h header file for more info
