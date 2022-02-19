@@ -9,6 +9,7 @@
 9) Add support for brand new installs on Win and Mac (config files, etc)
 10) Linux port?
 11) Add support for setting remote hostname, or remove requirement
-
+12) *** IMPORTANT *** implement handshake for gstreamer - don't sent any packets until requested with proper hostname
+13) MAKE SURE NudgeFreq timer can't run concurrent with another using mutex, see on_downtune_pButton_pressed() in mainwindow.cpp
 
 
