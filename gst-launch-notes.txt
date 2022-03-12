@@ -1,0 +1,30 @@
+gst-launch-1.0 udpsrc port=5000 \!\
+"application/x-rtp, media=(string)audio, clock-rate=(int)44100, width=16," \
+"height=16, encoding-name=(string)L16, encoding-params=(string)1," \
+"channels=(int)1, channel-positions=(int)1, payload=(int)96" \!\
+rtpL16depay \!\
+audioconvert \!\
+osxaudiosink sync=false
+
+# This is the current command as of commit a1ba157a52699ca92173f2cc35f60885c9a47365 Feb 7
+udpsrc port=5000 ! application/x-rtp,media=\(string\)audio, clock-rate=\(int\)44100, width=16, height=16, encoding-name=\(string\)L16, encoding-params=\(string\)1, channels=\(int\)1, channel-positions=\(int\)1, payload=\(int\)96 ! rtpjitterbuffer mode=synced ! rtpL16depay ! audioconvert ! osxaudiosink sync=true
+
+######  RTSP ########
+# To server rtsp file, do this:
+$ /Library/Frameworks/GStreamer.framework/Versions/1.0/bin/gst-validate-rtsp-server-1.0 --gst-debug-level=3 file:///Users/chris/Qt-6.2/6.2.2/Src/qtmultimedia/tests/auto/integration/qmediaplayerbackend/testdata/test.wav
+
+To play via rtsp server:
+$ gst-launch-1.0 rtspsrc location=rtsp://localhost:8554/test ! rtpL16depay ! audioconvert ! osxaudiosink device=76
+
+######  test launch works w/ VLC #########
+$ test-launch "filesrc location=/Users/chris/QtProjects/Rtsp-Server/jackie_brown.wav ! wavparse ! audioconvert ! rtpL16pay name=pay0"
+in VLC, play rtsp://127.0.0.1:8554/test
+
+#######  THIS WORKS RTSP March 11 ############3
+Server Side:  (Note: Quotes around args are required.  Fails without them
+$ test-launch "osxaudiosrc device=44 ! audio/x-raw, rate=48000, channels=1 ! audioresample ! audio/x-raw, rate=44100 ! rtpL16pay name=pay0 rtpjitterbuffer mode=synced"
+
+Client Side:
+$ gst-launch-1.0 rtspsrc location=rtsp://imac-wifi:8554/test ! rtpjitterbuffer mode=synced ! rtpL16depay ! audioconvert ! osxaudiosink sync=true
+
+
