@@ -1,4 +1,3 @@
-# Adding statemachine For debug only
 QT       += core serialport
 
 greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
@@ -15,6 +14,8 @@ DEFINES += QT_DEPRECATED_WARNINGS
 # In order to do so, uncomment the following line.
 # You can also select to disable deprecated APIs only up to a certain version of Qt.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
+
+macx: QT_CONFIG -= no-pkg-config
 
 SOURCES += \
     frequencynudger.cpp \
@@ -64,6 +65,9 @@ INCLUDEPATH += $$PWD/../../sandbox/Hamlib/install-dir-temp/include
 DEPENDPATH += $$PWD/../../sandbox/Hamlib/install-dir-temp/include
 
 # GStreamer support
+message("executable path =" $(@executable_path) )
+QT_CONFIG += --no-rpath
+macx: LDFLAGS += -Wl,-rpath /Library/Frameworks/GStreamer.framework/Versions/1.0/lib
 macx: LIBS += -L/Library/Frameworks/GStreamer.framework/Libraries -lgstreamer-1.0.0 -lglib-2.0.0
 win32: LIBS += -L$$PWD/../../../../mingw64/lib -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0 -lintl
 macx: INCLUDEPATH += /Library/Frameworks/GStreamer.framework/Headers

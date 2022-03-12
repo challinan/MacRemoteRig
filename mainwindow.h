@@ -182,7 +182,7 @@ private:
     GstreamerListener *gstreamerListener_p;
     QGraphicsScene *scene_p;
     TransmitWindow *pTxWindow;
-    unsigned char ic_bits[16];
+    unsigned char ic_bits[8];
     bool init_failed;
     int init_failure_code;
     QColor ledColor;

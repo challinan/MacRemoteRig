@@ -1,6 +1,5 @@
 #include "hamlibconnector.h"
 #include "ui_mainwindow.h"
-#include "config_object.h"
 #include <QDebug>
 #include <QApplication>
 
@@ -9,8 +8,8 @@ HamlibConnector::HamlibConnector(QObject *parent)
 {
     // For debug only
 
-    // verbose = RIG_DEBUG_NONE;
-    verbose = RIG_DEBUG_TRACE;
+    verbose = RIG_DEBUG_NONE;
+    // verbose = RIG_DEBUG_TRACE;
 
     lockout_spot = false;
     spotDelayWorker_p = nullptr;
@@ -23,9 +22,12 @@ HamlibConnector::HamlibConnector(QObject *parent)
     init_succeeded = false;
     split_enabled = false;
 
+    // Config object not yet initialized - this will fail
 #if 0
     // Figure out how we're configured - ie what rig and device
-    QString rig_model_str = get_value_from_key("Rig Model");
+    config_obj_p = Ui::MainWindow::getConfigObjPtr();
+    QString model_str = "Rig Model";
+    QString rig_model_str = config_obj_p->get_value_from_key(model_str);
     qDebug() << "HamlibConnector::HamlibConnector(): Rig Model configured as" << rig_model_str;
 #endif
 
@@ -321,7 +323,7 @@ int HamlibConnector::txCW_Char(char c) {
     int rc;
 
     // qDebug() << "HamlibConnector::txCW_Char(): Entered with " << c;
-    rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_CWTX, c_tmp);
+    rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_SEND_MORSE, c_tmp);
     return rc;
 }
 
@@ -379,17 +381,21 @@ void HamlibConnector::setPauseTx(bool checked) {
     qDebug() << "HamlibConnector::setPauseTx(): paused =" << checked;
 }
 
-void HamlibConnector::mrrGetIcConfig(unsigned char *p) {
+int HamlibConnector::mrrGetIcConfig(unsigned char *p) {
 
-#pragma unused(p)
     value_t val;
+    unsigned char buff[6];
+    val.s = (char *)buff;
 
     int rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_ICONSTATUS, &val);
     if ( rc != RIG_OK ) {
         qDebug() << "HamlibConnector::mrr_get_ic_config(): failed" << rigerror(rc);
+        return rc;
     }
-    qDebug() << "HamlibConnector::mrrGetIcConfig(): exiting";
-    // strncpy( (char *)p, val.s, 5);
+
+    // Copy the bytes into local storage
+    strncpy((char *)p, (char *)&buff, 5);
+    return 0;
 }
 
 void HamlibConnector::mrr_set_tx_test() {
@@ -453,6 +459,8 @@ int HamlibConnector::mrrSetMonLevel(int level) {
 int HamlibConnector::mrrGetXFILValue() {
 
     value_t status;
+    qDebug() << "HamlibConnector::mrrGetXFIL(): entered";
+
     int rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_XFILV, &status);
     if ( rc != RIG_OK ) {
         qDebug() << "HamlibConnector::mrrGetXFIL(): failed" << rigerror(rc);
@@ -503,6 +511,7 @@ to                       'int (*)(const struct confparams *, void *)' for 2nd ar
 
 int HamlibConnector::listTokensCallback(const struct confparams *cp, rig_ptr_t rp) {
 
+#pragma unused (rp)
     qDebug() << "HamlibConnector::listTokensCallback(): confparms:";
     qDebug() << "    token:" << cp->token;
     qDebug() << "    name:" << cp->name;
@@ -557,29 +566,62 @@ int HamlibConnector::mrrRigSetSplitVfo(bool split_on) {
     return rc;
 }
 
-void HamlibConnector::mrrGetRigIFInfo() {
+void HamlibConnector::mrrGetRigIF_XCVR_Info() {
 
-    qDebug() << "HamlibConnector::mrrGetRigIFInfo(): entered";
+    qDebug() << "HamlibConnector::mrrGetRigIF_XCVR_Info(): entered";
 
     value_t value;
     unsigned char buff[40];
-
-    // For debug only
-    for ( int i=0; i<40; i++ )
-        buff[i] = 0;
 
     value.s = (char *)buff;
 
     int rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_INFO, &value);
     if ( rc != RIG_OK ) {
-        qDebug() << "HamlibConnector::mrrGetXFIL(): failed" << rigerror(rc);
+        qDebug() << "HamlibConnector::mrrGetRigIF_XCVR_Info(): failed" << rigerror(rc);
     }
 
-    // Set the various values
-    qDebug() << "mrrGetRigIfInfo(): returned these bytes:";
-    for ( int i=0; i<38; i++ ) {
-        // qDebug() << "    " << Qt::hex <<  value.s[i];
-        fprintf(stderr, "%c ", (unsigned char) value.s[i]);
-    }
-    qDebug() << "";
+    // Parse rig response
+    parseRigIF_Response(buff);
+}
+
+void HamlibConnector::parseRigIF_Response(unsigned char *r) {
+
+    // RSP format: IF[f]*****+yyyyrx*00tmvspbd1* (37 bytes)
+    //   [f] Operating frequency, excluding any RIT/XIT offset (11 digits; see FA command format)
+    //   * represents a space (BLANK, or ASCII 0x20)
+    //   + either "+" or "-" (sign of RIT/XIT offset)
+    //    yyyy RIT/XIT offset in Hz (range is -9999 to +9999 Hz when computer-controlled)
+    //    r 1 if RIT is on, 0 if off
+    //    x 1 if XIT is on, 0 if off
+    //    t 1 if the K3 is in transmit mode, 0 if receive
+    //    m operating mode (see MD command)
+    //    v receive-mode VFO selection, 0 for VFO A, 1 for VFO B
+    //    s 1 if scan is in progress, 0 otherwise
+    //    p 1 if the transceiver is in split mode, 0 otherwise
+    //    b Basic RSP format: always 0; K2 Extended RSP format (K22): 1 if present IF response
+    //        is due to a band change; 0 otherwise
+    //    d Basic RSP format: always 0; K3 Extended RSP format (K31): DATA sub-mode,
+    //    if applicable (0=DATA A, 1=AFSK A, 2= FSK D, 3=PSK D)
+
+    std::memcpy(&if_resp, r, sizeof(if_resp));
+    qDebug() << "HamlibConnector::parseRigIF_Response(): returned these bytes: (sizeof)" << sizeof(if_resp);
+
+    char _fa[12];
+    std::memcpy(_fa, &if_resp.fa, 11);
+    _fa[11] = '\0';
+
+    qDebug() << "HamlibConnector::parseRigIF_Response(): FA =" << _fa;
+    fprintf(stderr, "    %c\n", if_resp.rit_offset_sign);
+
+    // Rig offset
+    std::memcpy(_fa, &if_resp.rit_offset, 4);
+    _fa[4] = '\0';
+    fprintf(stderr, "    %s\n", _fa);
+
+//    for ( int i=0; i<38; i++ ) {
+//        // qDebug() << "    " << Qt::hex <<  r[i];
+//        fprintf(stderr, "%c ", (unsigned char) r[i]);
+//    }
+//    qDebug() << "";
+
 }

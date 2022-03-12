@@ -13,7 +13,7 @@ FrequencyPoller::FrequencyPoller(QObject *parent)
     MainWindow* pMainWindow = static_cast<MainWindow *>(parent);
     connect(this, &FrequencyPoller::freq_ready, pMainWindow->getHamlibPointer(), &HamlibConnector::autoupdate_frequency);
     connect(this, &FrequencyPoller::smeter_ready, pMainWindow->getHamlibPointer(), &HamlibConnector::autoupdate_smeter);
-    poll_timer->start(100);
+    poll_timer->start(250);
 }
 
 // Slot - timer connected to this one

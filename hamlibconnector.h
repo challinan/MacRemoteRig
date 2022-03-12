@@ -3,14 +3,17 @@
 
 #include <QObject>
 #include <QThread>
-#include "hamlib/rig.h"
 #include <iostream>
 #include <iomanip>
+#include "hamlib/rig.h"
+#include "config_object.h"
 #include "spot_delayworker.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
+
+class ConfigObject;
 
 #define MAXCONFLEN 1024
 #define TOKEN_FRONTEND(t) ((t)|(1<<30))
@@ -27,12 +30,30 @@ typedef struct {
 
 const static xtal_filter_values_t xtal_filter_values[5] = { {1, "13KHz"}, {2, "2.7KHz"}, {3, "1.8KHz"}, {4, "500Hz"}, {5, "250Hz"} };
 
+// K3 Response to "IF" command
+struct rig_if_response {
+    char fa[11];
+    unsigned char pad1[5];
+    char rit_offset_sign;
+    char rit_offset[4];
+    char rit_on;
+    char xit_on;
+    unsigned char pad2[3];
+    char tx_active;
+    char rig_mode;
+    char rx_vfo;
+    char scan_on;
+    char split_on;
+    unsigned char pad3;   // RSP on K3, this bit is always 0 on K3
+    char k3_rsp;
+    unsigned char pad4[2];
+};
+
 class HamlibConnector : public QObject
 {
     Q_OBJECT
 public:
     explicit HamlibConnector(QObject *parent = nullptr);
-
     freq_t mrr_getRigFrequency(vfo_t vfo);
     void store_ui_pointer(Ui::MainWindow *p);
     int get_SMeter_progbar_value(int x);
@@ -57,7 +78,7 @@ public:
     int getCwSpeed();
     int bumpCwSpeed(bool up);
     void setPauseTx(bool checked);
-    void mrrGetIcConfig(unsigned char *p);
+    int mrrGetIcConfig(unsigned char *p);
     void mrr_set_tx_test();
     void mrr_set_band(int band);
     int mrr_get_band();
@@ -70,7 +91,9 @@ public:
     const char *getRigError(int err_number);
     const char *getXFILString(int number);
     int mrrRigSetSplitVfo(bool split_on);
-    void mrrGetRigIFInfo();
+    void mrrGetRigIF_XCVR_Info();
+    void parseRigIF_Response(unsigned char *r);
+    void setMainWindowPtr(Ui::MainWindow *p);
 
 public slots:
     int bwidthChangeRequest(int up_or_down);
@@ -81,6 +104,7 @@ public slots:
 
 private:
     RIG *my_rig;        /* handle to rig (instance) */
+    ConfigObject *config_obj_p;
     //  const char *rig_file = "localhost"; /* Change this for real network useage */
     const char *rig_file = "imac-wifi";
     rig_model_t my_model;
@@ -102,6 +126,7 @@ private:
     bool init_succeeded;
     int xfil_bandwidth;
     bool split_enabled;
+    struct rig_if_response if_resp;
 
 private:
     static int listTokensCallback(const struct confparams *cp, rig_ptr_t rp);

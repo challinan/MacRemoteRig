@@ -330,7 +330,7 @@ void MainWindow::on_nr_pbutton_clicked()
 
 void MainWindow::on_ntch_pbutton_clicked()
 {
-    hamlib_p->mrrGetRigIFInfo();
+    hamlib_p->mrrGetRigIF_XCVR_Info();
 }
 
 void MainWindow::on_pre_pbutton_clicked()
@@ -461,6 +461,7 @@ void MainWindow::nudgeFrequency(int direction, vfo_t vfo) {
         }
         QString str_tmp = HamlibConnector::get_display_frequency(f);
         ui->freqBDisplay->display(str_tmp);
+        update();
     }
 
 }
@@ -730,16 +731,16 @@ void MainWindow::on_dnCwSpeedpButton_clicked()
 
 void MainWindow::getConfigIconBits()
 {
-    hamlib_p->mrrGetIcConfig(ic_bits);
+    if ( hamlib_p->mrrGetIcConfig(ic_bits) == 0 ) { // Success
+        if ( ic_bits[2] & K3_ICON_VOX_ON_CW ) ui->voxLabel->setText("VOX");
 
-    if ( ic_bits[2] & K3_ICON_VOX_ON_CW ) ui->voxLabel->setText("VOX");
-
-    if ( ic_bits[0] & K3_ICON_TXTEST )  {
-        ui->txTestLabel->setText("TXTEST");
-        ui->txtest_pbutton->setChecked(true);
-    } else {
-        ui->txTestLabel->setText("TXNORM");
-        ui->txtest_pbutton->setChecked(false);
+        if ( ic_bits[0] & K3_ICON_TXTEST )  {
+            ui->txTestLabel->setText("TXTEST");
+            ui->txtest_pbutton->setChecked(true);
+        } else {
+            ui->txTestLabel->setText("TXNORM");
+            ui->txtest_pbutton->setChecked(false);
+        }
     }
 }
 
@@ -749,6 +750,11 @@ void MainWindow::processConfigIconBits() {
 
 void MainWindow::on_txtest_pbutton_clicked()
 {
+    // FIXME
+    // Either maintain cached state or read value before toggling it
+    // Make sure the pushbutton state reflects the state of TX Test mode
+    // Seems redundant to read it after we write (set) it
+
     qDebug() << "MainWindow::on_txtest_pbutton_clicked(): entered - checked =" << ui->txtest_pbutton->isChecked();
     hamlib_p->mrr_set_tx_test();
 
@@ -865,6 +871,7 @@ void MainWindow::on_widthDial_valueChanged(int value)
 void MainWindow::updateXFIL_display() {
 
     int f_num = hamlib_p->mrrGetXFILValue();
+    qDebug() << "MainWindow::updateXFIL_display(): f_num =" << f_num;
     QString s = hamlib_p->getXFILString(f_num);
     ui->xfilLabel->setText(s);
 }
@@ -961,12 +968,16 @@ void MainWindow::on_split_pButton_clicked()
 
         // Now set B to 1 KHz UP
         f = hl.mrrGetCachedFreqA();  // Get our current cached value
-        qDebug() << "MainWindow::on_split_pButton_clicked(): current freq is " << f << "setting VFO_B to" << f+1e3;
-        rc = hl.mrrSetRigFreqB(f+1e3);
+        qDebug() << "MainWindow::on_split_pButton_clicked(): current freq is " << f << "setting VFO_B to" << f-1e3;
+        rc = hl.mrrSetRigFreqB(f-1e3);
         if ( rc != RIG_OK ) {
             qDebug() << "MainWindow::on_split_pButton_clicked(): set frequency failed: " << rc << hl.getRigError(rc);
             return;
         }
+
+        // Update the Freq B display
+        QString str_tmp = HamlibConnector::get_display_frequency(f);
+        ui->freqBDisplay->display(str_tmp);
 
         // Enable split mode
         rc = hamlib_p->mrrRigSetSplitVfo(true);
@@ -974,10 +985,6 @@ void MainWindow::on_split_pButton_clicked()
             qDebug() << "MainWindow::on_split_pButton_clicked(): set split mode failed: " << rc << hl.getRigError(rc);
             return;
         }
-
-        // Update VFO B display
-        QString s = HamlibConnector::get_display_frequency(f);
-        ui->freqBDisplay->display(s);
 
         // Update RX/TX Icons
         ui->vfoB_TX_Label->setText("TX");
@@ -991,8 +998,10 @@ void MainWindow::on_split_pButton_clicked()
         ui->vfoA_TX_Label->setStyleSheet("QLabel { color : red; }");
         ui->vfoB_TX_Label->setStyleSheet("QLabel { color : black; }");
         rc = hamlib_p->mrrRigSetSplitVfo(false);
+        if ( rc != RIG_OK ) {
+            qDebug() << "MainWindow::on_split_pButton_clicked(): cancel split mode failed: " << rc << hl.getRigError(rc);
+            return;
+        }
     }
-
-
 }
 
