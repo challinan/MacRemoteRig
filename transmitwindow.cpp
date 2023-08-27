@@ -1,4 +1,5 @@
 #include "transmitwindow.h"
+#include "morse_table.h"
 
 #define ENABLE_TX_THREAD
 

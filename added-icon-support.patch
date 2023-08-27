@@ -1,0 +1,393 @@
+diff --git a/MacRemoteRig.pro b/MacRemoteRig.pro
+index 4ef37dd..bd7cea5 100644
+--- a/MacRemoteRig.pro
++++ b/MacRemoteRig.pro
+@@ -36,6 +36,7 @@ HEADERS += \
+     gstreamerlistener.h \
+     hamlibconnector.h \
+     config_object.h \
++    icon_defines.h \
+     mainwindow.h \
+     spot_delayworker.h \
+     transmitwindow.h \
+diff --git a/TODO.txt b/TODO.txt
+index 6e28fc1..62268d3 100644
+--- a/TODO.txt
++++ b/TODO.txt
+@@ -1,4 +1,4 @@
+ 1) Set Baud Rate from application - STTY doesn't work on MAC OS X
+ 2) Configure Radio from application
+ 3) Configure connection method from application
+-4)
++4) Set immediate RX after ESC - see transmitwindow.cpp:194
+diff --git a/hamlibconnector.cpp b/hamlibconnector.cpp
+index 1581eeb..9b7af7a 100644
+--- a/hamlibconnector.cpp
++++ b/hamlibconnector.cpp
+@@ -7,8 +7,8 @@
+ HamlibConnector::HamlibConnector(QObject *parent)
+     : QObject{parent}
+ {
+-    verbose = RIG_DEBUG_NONE;
+-    // verbose = RIG_DEBUG_TRACE;
++    //  verbose = RIG_DEBUG_NONE;
++    verbose = RIG_DEBUG_TRACE;
+ 
+ #if 0
+     // Figure out how we're configured - ie what rig and device
+@@ -269,16 +269,14 @@ void HamlibConnector::mrrSetRx() {
+     }
+ }
+ 
+-void HamlibConnector::txCW_Char(char c) {
+-    qDebug() << "HamlibConnector::txCW_Char(): Entered with " << c;;
+-    unsigned char buff[16];
+-    value_t val;
+-    val.b.d = buff;
+-    val.b.l = 1;    // Message length
+-    buff[0] = c;
+-    buff[1] = '\0';
++int HamlibConnector::txCW_Char(char c) {
++
++    char c_tmp = c;
++    int rc;
+ 
+-    mrr_set_level(RIG_LEVEL_CWTX, val);
++    qDebug() << "HamlibConnector::txCW_Char(): Entered with " << c;;
++    rc = rig_set_func(my_rig, current_vfo, RIG_FUNC_CWTX, c_tmp);
++    return rc;
+ }
+ 
+ int HamlibConnector::mrr_set_level(setting_t level, value_t val) {
+@@ -336,3 +334,13 @@ void HamlibConnector::setPauseTx(bool checked) {
+     emit pauseTxSig(checked);
+     qDebug() << "HamlibConnector::setPauseTx(): paused =" << checked;
+ }
++
++void HamlibConnector::mrr_get_ic_config(char *p) {
++
++    value_t val;
++    val.s = p;  // Storage in mainwindow.cpp
++    int rc = rig_get_level(my_rig, current_vfo, RIG_LEVEL_ICONSTATUS, &val);
++    if ( rc != RIG_OK ) {
++        qDebug() << "HamlibConnector::mrr_get_ic_config(): failed" << rigerror(rc);
++    }
++}
+diff --git a/hamlibconnector.h b/hamlibconnector.h
+index d3637ea..f9542e6 100644
+--- a/hamlibconnector.h
++++ b/hamlibconnector.h
+@@ -45,13 +45,14 @@ public:
+     int getCwSpeed();
+     int bumpCwSpeed(bool up);
+     void setPauseTx(bool checked);
++    void mrr_get_ic_config(char *p);
+ 
+ public slots:
+     int bwidth_change_request(int up_or_down);
+     void mrrSetTune(int on);
+     float read_rig_swr();
+     void mrrSetRx();
+-    void txCW_Char(char c);
++    int txCW_Char(char c);
+ 
+ private:
+     RIG *my_rig;        /* handle to rig (instance) */
+diff --git a/icon_defines.h b/icon_defines.h
+new file mode 100644
+index 0000000..488e79b
+--- /dev/null
++++ b/icon_defines.h
+@@ -0,0 +1,9 @@
++#ifndef ICON_DEFINES_H
++#define ICON_DEFINES_H
++
++#define K3_ICON_QSKFULL (1<<6)
++#define K3_ICON_TXTEST  (1<<5)
++#define K3_ICON_VOX     (1<<4)
++
++#endif // ICON_DEFINES_H
++
+diff --git a/mainwindow.cpp b/mainwindow.cpp
+index 533bbe9..a169501 100644
+--- a/mainwindow.cpp
++++ b/mainwindow.cpp
+@@ -4,7 +4,6 @@
+ #include "genericdialog.h"
+ #include "gstreamerlistener.h"
+ 
+-// #define SKIP_RIG_INIT
+ // #define SKIP_CONFIG_INIT
+ 
+ MainWindow::MainWindow(QWidget *parent)
+@@ -75,12 +74,13 @@ MainWindow::MainWindow(QWidget *parent)
+     ui->pauseTXpbutton->setCheckable(1);
+ 
+     // Get the initial CW Speed value
++#ifndef SKIP_RIG_INIT
+     int speed = hamlib_p->getCwSpeed();
+     if ( speed != -1 )
+         ui->cwSpeedValueLabel->setText(QString().setNum(speed));
+ 
++
+     // Initialize other front panel status bits
+-#ifndef SKIP_RIG_INIT
+     initialize_front_panel();
+ 
+     // Start the listener thread for audio
+@@ -102,10 +102,10 @@ MainWindow::MainWindow(QWidget *parent)
+ 
+ MainWindow::~MainWindow()
+ {
++#ifndef SKIP_RIG_INIT
+     gstreamerListener_p->terminate();
+     gstreamerListener_p->wait();
+     delete gstreamerListener_p;
+-#ifndef SKIP_RIG_INIT
+     delete scene_p;
+     delete hamlib_p;
+     delete ui;
+@@ -531,6 +531,10 @@ void MainWindow::initialize_front_panel() {
+     // Setup width control
+     pbwidth_t w = hamlib_p->mrr_get_width();
+     update_width_slider(w);
++
++    // Set Icons
++    ui->voxLabel->setText("");
++    ui->txTestLabel->setText("");
+ }
+ 
+ void MainWindow::update_width_slider(int w) {
+@@ -592,3 +596,18 @@ void MainWindow::on_dnCwSpeedpButton_clicked()
+     ui->cwSpeedValueLabel->setText(QString().setNum(s));
+ 
+ }
++
++void MainWindow::on_ic_pbutton_clicked()
++{
++    hamlib_p->mrr_get_ic_config(ic_bits);
++
++    qDebug() << "MainWindow::on_ic_pbutton_clicked(): returned this";
++    for ( int i=0; i<5; i++ )
++        qDebug() << "    " << Qt::hex << (unsigned int) ic_bits[i];
++
++    if ( ic_bits[2] & K3_ICON_VOX ) ui->voxLabel->setText("VOX");
++    if ( ic_bits[0] & K3_ICON_TXTEST)  ui->txTestLabel->setText("TXTEST"); else ui->txTestLabel->setText("TXNORM");
++    qDebug() << "VOX =" << Qt::hex << K3_ICON_VOX;
++    qDebug() << "QSK =" << Qt::hex << K3_ICON_QSKFULL;
++}
++
+diff --git a/mainwindow.h b/mainwindow.h
+index 5cda73d..1a8db16 100644
+--- a/mainwindow.h
++++ b/mainwindow.h
+@@ -17,9 +17,13 @@
+ #include "tune_dialog.h"
+ #include "transmitwindow.h"
+ #include "gstreamerlistener.h"
++#include "icon_defines.h"
++
+ // For debug only
+ #include <QLineEdit>
+ 
++// #define SKIP_RIG_INIT
++
+ QT_BEGIN_NAMESPACE
+ namespace Ui { class MainWindow; }
+ QT_END_NAMESPACE
+@@ -96,6 +100,8 @@ private slots:
+     void on_upCwSpeedpButton_clicked();
+ 
+ 
++    void on_ic_pbutton_clicked();
++
+ private:
+     void nudgeFrequency(int direction);
+     void worker_thread();
+@@ -119,6 +125,7 @@ private:
+     GstreamerListener *gstreamerListener_p;
+     QGraphicsScene *scene_p;
+     TransmitWindow *pTxEdit;
++    char ic_bits[5];
+ 
+     // For Debug
+     QTimer *bw_timer;
+diff --git a/mainwindow.ui b/mainwindow.ui
+index 765d12d..05cde1b 100644
+--- a/mainwindow.ui
++++ b/mainwindow.ui
+@@ -563,6 +563,55 @@
+      <string>0</string>
+     </property>
+    </widget>
++   <widget class="QPushButton" name="ic_pbutton">
++    <property name="geometry">
++     <rect>
++      <x>90</x>
++      <y>60</y>
++      <width>61</width>
++      <height>32</height>
++     </rect>
++    </property>
++    <property name="text">
++     <string>Config</string>
++    </property>
++   </widget>
++   <widget class="QLabel" name="voxLabel">
++    <property name="geometry">
++     <rect>
++      <x>175</x>
++      <y>57</y>
++      <width>21</width>
++      <height>16</height>
++     </rect>
++    </property>
++    <property name="font">
++     <font>
++      <pointsize>8</pointsize>
++     </font>
++    </property>
++    <property name="text">
++     <string>VOX</string>
++    </property>
++   </widget>
++   <widget class="QLabel" name="txTestLabel">
++    <property name="geometry">
++     <rect>
++      <x>175</x>
++      <y>46</y>
++      <width>41</width>
++      <height>16</height>
++     </rect>
++    </property>
++    <property name="font">
++     <font>
++      <pointsize>8</pointsize>
++     </font>
++    </property>
++    <property name="text">
++     <string>TXNORM</string>
++    </property>
++   </widget>
+   </widget>
+   <widget class="QStatusBar" name="statusbar"/>
+  </widget>
+diff --git a/transmitwindow.cpp b/transmitwindow.cpp
+index 821b514..34dd4de 100644
+--- a/transmitwindow.cpp
++++ b/transmitwindow.cpp
+@@ -97,6 +97,8 @@ TransmitWindow::TransmitWindow(QMainWindow *parent, HamlibConnector *phamlib)
+     last_size = 0;
+     is_transmitting = false;
+     key_count = 0;
++    // For debug only
++    debug_count = 0;
+ 
+     // Initialize circular buffer
+     ccbuf.clear();
+@@ -112,8 +114,10 @@ TransmitWindow::TransmitWindow(QMainWindow *parent, HamlibConnector *phamlib)
+     connect(this, &QTextEdit::textChanged, this, &TransmitWindow::processTextChanged);
+     // connect(this, &QTextEdit::blockCountChanged, this, &TransmitWindow::updateBlockCount);
+     connect(this, &QTextEdit::cursorPositionChanged, this, &TransmitWindow::CursorPositionChangedSlot);
++#ifndef SKIP_RIG_INIT
+     qDebug() << "TransmitWindow::TransmitWindow(): ******************* hamlib_p =" << hamlib_p;
+     connect(hamlib_p, &HamlibConnector::pauseTxSig, tx_thread_p, &CWTX_Thread::pauseTx);
++#endif
+ #ifdef ENABLE_TX_THREAD
+     connect(this, &TransmitWindow::startTx, tx_thread_p, &CWTX_Thread::startStopTX);
+     connect(tx_thread_p, &CWTX_Thread::deQueueChar, this, &TransmitWindow::markCharAsSent);
+@@ -134,9 +138,11 @@ void TransmitWindow::keyReleaseEvent(QKeyEvent *event) {
+ 
+     CBuffer &bf = ccbuf;
+ 
+-    if ( event->key() == 92 ) return;   // backslash key
++    if ( event->key() == Qt::Key_Backslash ) {
++        return;   // backslash key
++    }
+ 
+-    // qDebug() << "TransmitWindow::keyReleaseEvent():" << event->key();
++    debug_count++;
+     highlightTextSem.acquire();
+     moveCursor(QTextCursor::End, QTextCursor::MoveAnchor);
+     setCurrentCharFormat(norm);
+@@ -185,6 +191,7 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
+         last_size = 0;
+         tx_position = 0;
+         key_count = 0;
++        debug_count = 0;
+         bufferSem.acquire();
+         bf.clear();      // Clear our circular buffer
+         bufferSem.release();
+@@ -239,7 +246,7 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
+     }
+ 
+     if ( key == Qt::Key_Backslash ) {
+-        qDebug() << R"(\\\\\)" << "text window size" << toPlainText().size();
++        qDebug() << R"(\\\\\)" << "text window size" << toPlainText().size() << "debug count" << debug_count << "tx_position" << tx_position;
+         return;
+     }
+ 
+@@ -270,6 +277,7 @@ void TransmitWindow::keyPressEvent(QKeyEvent *event) {
+         // Ignore this character - buffer is full
+         return;
+     }
++    emit startTx(true);
+ 
+     // Reset the text formatting
+     // At this point, the character reported by this event hasn't hit the text window yet.
+@@ -302,7 +310,7 @@ void TransmitWindow::markCharAsSent(char c) {
+     (void)c;    // Suppress unused warning
+     int size = toPlainText().size();
+     // Did we get a clear() event (ESC)?
+-    if ( size < 1 ) return;
++    if ( size == 0 ) return;
+ 
+     tx_position++;
+     highlightTextSem.acquire();
+@@ -317,6 +325,7 @@ void TransmitWindow::markCharAsSent(char c) {
+     }
+     cursor.setCharFormat(f);
+     highlightTextSem.release();
++    qDebug() << "TransmitWindow::mackCharAsSent(): debug count =" << debug_count << "tx_position =" << tx_position;
+ #endif
+ }
+ 
+@@ -370,17 +379,21 @@ void CWTX_Thread::run() {
+                 qDebug() << "WTX_Thread::run(): buffer empty";
+                 continue;  // Is this what we want to do here?
+             }
+-            qDebug() << QDateTime::currentMSecsSinceEpoch() << "CWTX_Thread::run(): deQueueing char" << c;
+-            // This won't work yet - see mainwindow.cpp:90
++            // qDebug() << QDateTime::currentMSecsSinceEpoch() << "CWTX_Thread::run(): deQueueing char" << c;
+             emit deQueueChar(c);
++#ifdef SKIP_RIG_INIT
++            QThread::msleep(50);
++#endif
++#ifndef SKIP_RIG_INIT
+             emit txChar(c);
++#endif
+         }
+-        QThread::msleep(50);
++        QThread::msleep(10);
+     }
+ }
+ 
+ void CWTX_Thread::startStopTX(bool start) {
+-    qDebug() << QDateTime::currentMSecsSinceEpoch() << "CWTX_Thread::startStopTX() signal received:" << start;
++    // qDebug() << QDateTime::currentMSecsSinceEpoch() << "CWTX_Thread::startStopTX() signal received:" << start;
+     if ( start == true )
+         transmitNow = true;
+     else
+diff --git a/transmitwindow.h b/transmitwindow.h
+index ee980cb..c168fe9 100644
+--- a/transmitwindow.h
++++ b/transmitwindow.h
+@@ -77,6 +77,8 @@ private:
+      CWTX_Thread *tx_thread_p;
+      CBuffer ccbuf;
+      HamlibConnector *hamlib_p;
++     // For debug only
++     int debug_count;
+ 
+ signals:
+      void startTx(bool start);

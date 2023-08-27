@@ -19,8 +19,6 @@ class ConfigObject;
 #define TOKEN_FRONTEND(t) ((t)|(1<<30))
 #define BANDWIDTH_STEP 10
 
-#include "morse_table.h"
-
 typedef struct { int raw; QString s; } s_meter_cal_t;
 
 typedef struct {
@@ -106,7 +104,7 @@ private:
     RIG *my_rig;        /* handle to rig (instance) */
     ConfigObject *config_obj_p;
     //  const char *rig_file = "localhost"; /* Change this for real network useage */
-    const char *rig_file = "imac-wifi";
+    const char *rig_file = "mac-mini";
     rig_model_t my_model;
     int retcode;
     rig_debug_level_e verbose = RIG_DEBUG_NONE;

@@ -66,9 +66,9 @@ void MainWindow::mwInitialize() {
     int speed;
     QString str_tmp;
 
-    /* Initialize the rig */
-    // HamlibConnector hamlibc;
+    /* Initialize the rig via Hamlib library */
     hamlib_p = new HamlibConnector;
+
     qDebug() << "MainWindow::mwInitialize() constructor: hamlib init returned" << hamlib_p->get_retcode();
 #ifndef SKIP_RIG_INIT
     if ( hamlib_p->get_retcode() != RIG_OK ) {

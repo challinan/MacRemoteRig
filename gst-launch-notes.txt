@@ -22,7 +22,7 @@ in VLC, play rtsp://127.0.0.1:8554/test
 
 #######  THIS WORKS RTSP March 11 ############3
 Server Side:  (Note: Quotes around args are required.  Fails without them
-$ test-launch "osxaudiosrc device=44 ! audio/x-raw, rate=48000, channels=1 ! audioresample ! audio/x-raw, rate=44100 ! rtpL16pay name=pay0 rtpjitterbuffer mode=synced"
+$ test-launch "osxaudiosrc device=44 ! audio/x-raw, rate=48000, channels=1 ! audioresample ! audio/x-raw, rate=44100 ! rtpL16pay name=pay0 ! rtpjitterbuffer mode=synced"
 
 Client Side:
 $ gst-launch-1.0 rtspsrc location=rtsp://imac-wifi:8554/test ! rtpjitterbuffer mode=synced ! rtpL16depay ! audioconvert ! osxaudiosink sync=true

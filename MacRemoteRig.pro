@@ -1,8 +1,8 @@
-QT       += core serialport
+QT       += core serialport widgets
 
-greaterThan(QT_MAJOR_VERSION, 5): QT += widgets
+CONFIG += c++17
 
-CONFIG += c++14
+QMAKE_MACOSX_DEPLOYMENT_TARGET = "13.0"
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
@@ -53,22 +53,27 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-# QMAKE_MACOSX_DEPLOYMENT_TARGET = "11.0"
-macx: QMAKE_MACOSX_DEPLOYMENT_TARGET = "10.15"
-
-# message($$PWD)
-
 # Support for Hamlib Library in our workspace
-macx: LIBS += -L$$PWD/../../sandbox/Hamlib/install-dir-temp/lib/ -lhamlib.4
-win32: LIBS += -L$$PWD/../../sandbox/Hamlib/install-dir-temp/lib -lhamlib -lws2_32
-INCLUDEPATH += $$PWD/../../sandbox/Hamlib/install-dir-temp/include
-DEPENDPATH += $$PWD/../../sandbox/Hamlib/install-dir-temp/include
+macx: LIBS += -L/usr/local/lib -lhamlib
+win32: LIBS += -L$$PWD/../../Hamlib/install-dir-temp/lib -lhamlib -lws2_32
+INCLUDEPATH += $$PWD/../../Hamlib/include
+DEPENDPATH += $$PWD/../../Hamlib/include
 
 # GStreamer support
-message("executable path =" $(@executable_path) )
-QT_CONFIG += --no-rpath
-macx: LDFLAGS += -Wl,-rpath /Library/Frameworks/GStreamer.framework/Versions/1.0/lib
-macx: LIBS += -L/Library/Frameworks/GStreamer.framework/Libraries -lgstreamer-1.0.0 -lglib-2.0.0
-win32: LIBS += -L$$PWD/../../../../mingw64/lib -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0 -lintl
-macx: INCLUDEPATH += /Library/Frameworks/GStreamer.framework/Headers
-win32: INCLUDEPATH += $$PWD/../../../../mingw64/include/gstreamer-1.0 $$PWD/../../../../mingw64/include/glib-2.0 $$PWD/../../../../mingw64/lib/glib-2.0/include $$PWD/../../../../mingw64/include -pthread -mms-bitfields
+INCLUDEPATH += /opt/homebrew/Cellar/gstreamer/1.22.5/include/gstreamer-1.0 /opt/homebrew/Cellar/glib/2.76.4/include \
+/opt/homebrew/Cellar/glib/2.76.4/include/glib-2.0 /opt/homebrew/Cellar/glib/2.76.4/lib/glib-2.0/include \
+/opt/homebrew/opt/gettext/include /opt/homebrew/Cellar/pcre2/10.42/include \
+/Library/Developer/CommandLineTools/SDKs/MacOSX13.sdk/usr/include/ffi
+
+LIBS += -L/opt/homebrew/Cellar/gstreamer/1.22.5/lib -L/opt/homebrew/Cellar/glib/2.76.4/lib \
+-L/opt/homebrew/opt/gettext/lib -lgstreamer-1.0 -Wl,-rpath,/opt/homebrew/Cellar/gstreamer/1.22.5/lib \
+-lgobject-2.0 -lglib-2.0 -lintl
+
+# RTSP SERVER SUPPORT
+LIBS += -lgstrtspserver-1.0
+
+# message(CONFIG = $$CONFIG)
+message(QMAKE_MAC_SDK = $$QMAKE_MAC_SDK)
+message(QMAKE_MAC_SDK_PATH = $$QMAKE_MAC_SDK_PATH)
+message(QMAKE_MAC_SDK_PLATFORM_PATH = $$QMAKE_MAC_SDK_PLATFORM_PATH)
+message(QMAKE_MAC_SDK_VERSION = $$QMAKE_MAC_SDK_VERSION)

@@ -1,12 +1,39 @@
+August 27, 2023
+Both clients work:
+Server Side - MrrServerSide
+(Will not run under Qt Creator - must be started from cmd line only
+osxaudiosrc device=48 ! audio/x-raw, rate=48000, channels=1 ! rtpL16pay name=pay0
+
+MacRemoteRig side:
+Runs under Qt Creator
+"rtspsrc location=rtsp://mac-mini:8554/test latency=0 buffer-mode=auto \
+     ! rtpL16depay ! audioconvert ! osxaudiosink device=67"
+
+
+August 24, 2023
+This combination works:
+On server side (mac-mini w/ gstreamer installed via Homebrew)
+$ gst-launch-1.0 --gst-version
+GStreamer Core Library version 1.22.5
+
+$ gst-launch-1.0 osxaudiosrc device=48 ! audio/x-raw, rate=48000, channels=1 ! audioresample ! audio/x-raw, rate=44100 ! rtpL16pay ! rtpjitterbuffer mode=synced ! udpsink host=chris-mbp16 port=5000
+--- *** ---
+On client side: (chris-mbp16)
+$ ./gstreamer-install/bin/gst-launch-1.0 --gst-version
+GStreamer Core Library version 1.21.0.1
+
+$ ./gstreamer-install/bin/gst-launch-1.0 -v udpsrc port=5000 ! "application/x-rtp,media=(string)audio, clock-rate=(int)44100, width=16, height=16, encoding-name=(string)L16, encoding-params=(string)1, channels=(int)1, channel-positions=(int)1, payload=(int)96" ! rtpL16depay ! audioconvert ! osxaudiosink device=134 sync=false
+
+
 ########################## THIS WORKS  #################################
 # On the receiving end (chris-mbp16)
-# gst-launch-1.0 -v udpsrc port=5000 ! "application/x-rtp,media=(string)audio, clock-rate=(int)44100, width=16, height=16, encoding-name=(string)L16, encoding-params=(string)1, channels=(int)1, channel-positions=(int)1, payload=(int)96" ! rtpL16depay ! audioconvert ! osxaudiosink sync=false
+# gst-launch-1.0 -v udpsrc port=5000 ! "application/x-rtp,media=(string)audio, clock-rate=(int)44100, width=16, height=16, encoding-name=(string)L16, encoding-params=(string)1, channels=(int)1, channel-positions=(int)1, payload=(int)96" ! rtpL16depay ! audioconvert ! osxaudiosink device=xx sync=false
 
 # THIS PIPELINE CREATES A LOCAL FILE FROM THE K3 Audio!!
-# gst-launch-1.0 -vvvv osxaudiosrc device=44 ! audioresample ! audioconvert ! audio/x-raw,format=S24LE,rate=48000 ! wavenc ! filesink location=k3_audio.wav
+# gst-launch-1.0 -vvvv osxaudiosrc device=66 ! audioresample ! audioconvert ! audio/x-raw,format=S24LE,rate=48000 ! wavenc ! filesink location=k3_audio.wav
 
 # AND THIS PIPELINE PLAYS K3 AUDIO ON REMOTE MAC!!!
-# gst-launch-1.0 -v osxaudiosrc device=44 ! audioconvert ! audioresample ! audio/x-raw, rate=48000, channels=1 ! rtpL16pay  ! udpsink host=chris-mbp16 port=5000
+# gst-launch-1.0 -v osxaudiosrc device=66 ! audioconvert ! audioresample ! audio/x-raw, rate=48000, channels=1 ! rtpL16pay  ! udpsink host=chris-mbp16 port=5000
 ########################## THIS WORKS  #################################
 
 
@@ -27,7 +54,6 @@ https://gist.github.com/hum4n0id/cda96fb07a34300cdb2c0e314c14df0a
 gst-launch-1.0 -v udpsrc port=5004 caps="application/x-rtp,media=(string)video,encoding-name=(string)H264,payload=(int)96" ! rtpjitterbuffer ! rtph264depay ! decodebin ! videoconvert ! autovideosink
 
 # From gst-device-monitor-1.0 Audio/Source on imac-wifi
-(located in /Library//Frameworks/GStreamer.framework/Versions/1.0/bin)
 
 Device found:
 
